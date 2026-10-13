@@ -101,6 +101,7 @@ export default function CustomerSalesIntelligencePage({ currentUser, token, onNa
       try {
         const authToken = token || localStorage.getItem('storelistener_token');
         const res = await fetch(`${BACKEND_URL}/api/stores`, {
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
             ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -133,6 +134,7 @@ export default function CustomerSalesIntelligencePage({ currentUser, token, onNa
       if (selectedProduct && selectedProduct !== 'all') queryParams.append('product', selectedProduct);
 
       const res = await fetch(`${BACKEND_URL}/api/intelligence/overview?${queryParams.toString()}`, {
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -170,6 +172,7 @@ export default function CustomerSalesIntelligencePage({ currentUser, token, onNa
       if (selectedProduct && selectedProduct !== 'all') queryParams.append('product', selectedProduct);
 
       const res = await fetch(`${BACKEND_URL}/api/intelligence/export-csv?${queryParams.toString()}`, {
+        credentials: 'include',
         headers: {
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },

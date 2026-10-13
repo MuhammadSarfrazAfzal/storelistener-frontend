@@ -131,6 +131,7 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
       try {
         const res = await fetch(`${BACKEND_URL}/api/sessions/${sessionId}/transcript`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text, speaker })
         });
@@ -196,6 +197,7 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
       // 1. Notify Backend of new session
       await fetch(`${BACKEND_URL}/api/sessions/start`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: sId,
@@ -250,6 +252,7 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
           formData.append('language', language);
           fetch(`${BACKEND_URL}/api/sessions/${sId}/live-transcribe`, {
             method: 'POST',
+            credentials: 'include',
             body: formData
           })
           .then(r => r.json())
@@ -388,6 +391,7 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
       // 1. Finalize session in backend
       const endRes = await fetch(`${BACKEND_URL}/api/sessions/${sessionId}/end`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           transcripts,
@@ -402,6 +406,7 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
         formData.append('audio', audioBlob, `rec-${sessionId}.webm`);
         await fetch(`${BACKEND_URL}/api/sessions/${sessionId}/audio`, {
           method: 'POST',
+          credentials: 'include',
           body: formData
         });
       }
@@ -432,6 +437,7 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
     // Start session
     await fetch(`${BACKEND_URL}/api/sessions/start`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         sessionId: sId,
@@ -475,6 +481,7 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
     // Finalize
     await fetch(`${BACKEND_URL}/api/sessions/${sId}/end`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ durationSeconds: 48 })
     });

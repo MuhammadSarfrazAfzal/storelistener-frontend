@@ -158,7 +158,9 @@ export default function DealAnalysisReportsPage({ currentUser, token, socket }) 
       if (selectedIntent !== 'all') params.append('buyingIntent', selectedIntent);
       if (searchRep.trim()) params.append('salesperson', searchRep.trim());
 
-      const res = await fetch(`${BACKEND_URL}/api/analytics/deal-reports?${params.toString()}`);
+      const res = await fetch(`${BACKEND_URL}/api/analytics/deal-reports?${params.toString()}`, {
+        credentials: 'include',
+      });
       const data = await res.json();
       if (data.success) {
         setReportData(data);
@@ -206,7 +208,9 @@ export default function DealAnalysisReportsPage({ currentUser, token, socket }) 
   // Open conversation details
   const handleInspectConversation = async (conversation) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/sessions/${conversation.id}/analysis`);
+      const res = await fetch(`${BACKEND_URL}/api/sessions/${conversation.id}/analysis`, {
+        credentials: 'include',
+      });
       const data = await res.json();
       if (data.success) {
         setActiveSession({
@@ -230,6 +234,7 @@ export default function DealAnalysisReportsPage({ currentUser, token, socket }) 
     try {
       const res = await fetch(`${BACKEND_URL}/api/sessions/${sessionId}/analyze`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ force: true }),
       });

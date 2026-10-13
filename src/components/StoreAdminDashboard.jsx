@@ -56,9 +56,12 @@ export default function StoreAdminDashboard({ currentUser, token, onLogout }) {
     try {
       const [pendingRes, statsRes] = await Promise.all([
         fetch(`${BACKEND_URL}/api/auth/pending-sales-managers`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         }),
-        fetch(`${BACKEND_URL}/api/analytics/stats?store=${selectedStore}`),
+        fetch(`${BACKEND_URL}/api/analytics/stats?store=${selectedStore}`, {
+          credentials: 'include',
+        }),
       ]);
 
       const pendingData = await pendingRes.json();
@@ -79,7 +82,7 @@ export default function StoreAdminDashboard({ currentUser, token, onLogout }) {
     fetchDashboardStats();
 
     // Socket.io for real-time notifications
-    const socket = io(BACKEND_URL);
+    const socket = io(BACKEND_URL, { withCredentials: true });
     socket.on('connect', () => setSocketConnected(true));
     socket.on('disconnect', () => setSocketConnected(false));
 

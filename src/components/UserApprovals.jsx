@@ -52,15 +52,16 @@ export default function UserApprovals({ token, onStatusChange }) {
   const [rejectionReason, setRejectionReason] = useState('Not authorized for store floor terminal');
 
   const fetchUsers = async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const [pendingRes, allRes] = await Promise.all([
         fetch(`${BACKEND_URL}/api/auth/pending-sales-managers`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         }),
         fetch(`${BACKEND_URL}/api/auth/users`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         }),
       ]);
 
@@ -85,9 +86,10 @@ export default function UserApprovals({ token, onStatusChange }) {
     try {
       const res = await fetch(`${BACKEND_URL}/api/auth/users/${user.id}/approve`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
       const data = await res.json();
@@ -119,9 +121,10 @@ export default function UserApprovals({ token, onStatusChange }) {
     try {
       const res = await fetch(`${BACKEND_URL}/api/auth/users/${rejectDialogUser.id}/reject`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ reason: rejectionReason }),
       });

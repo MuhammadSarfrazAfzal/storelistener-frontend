@@ -137,6 +137,7 @@ export default function NotificationSettingsPage({ token, currentUser }) {
     try {
       const authToken = token || localStorage.getItem('storelistener_token');
       const res = await fetch(`${BACKEND_URL}/api/notifications/settings`, {
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -203,6 +204,7 @@ export default function NotificationSettingsPage({ token, currentUser }) {
       const authToken = token || localStorage.getItem('storelistener_token');
       const res = await fetch(`${BACKEND_URL}/api/notifications/settings`, {
         method: 'PUT',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -228,6 +230,7 @@ export default function NotificationSettingsPage({ token, currentUser }) {
       const authToken = token || localStorage.getItem('storelistener_token');
       const res = await fetch(`${BACKEND_URL}/api/notifications/trigger-test`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),

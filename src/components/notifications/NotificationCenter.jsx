@@ -71,6 +71,7 @@ export default function NotificationCenter({ token, socket, onNavigate }) {
     try {
       const authToken = token || localStorage.getItem('storelistener_token');
       const res = await fetch(`${BACKEND_URL}/api/notifications?limit=30`, {
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -91,7 +92,7 @@ export default function NotificationCenter({ token, socket, onNavigate }) {
   useEffect(() => {
     fetchNotifications();
 
-    const activeSocket = socket || io(BACKEND_URL, { reconnection: true, timeout: 5000 });
+    const activeSocket = socket || io(BACKEND_URL, { reconnection: true, timeout: 5000, withCredentials: true });
 
     const handleNewNotification = (data) => {
       if (data && data.notification) {
@@ -133,6 +134,7 @@ export default function NotificationCenter({ token, socket, onNavigate }) {
       const authToken = token || localStorage.getItem('storelistener_token');
       const res = await fetch(`${BACKEND_URL}/api/notifications/${id}/read`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -155,6 +157,7 @@ export default function NotificationCenter({ token, socket, onNavigate }) {
       const authToken = token || localStorage.getItem('storelistener_token');
       const res = await fetch(`${BACKEND_URL}/api/notifications/mark-all-read`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),

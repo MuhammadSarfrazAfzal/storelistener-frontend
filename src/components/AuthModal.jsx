@@ -24,6 +24,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
     try {
       const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
@@ -41,10 +42,9 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
         return;
       }
 
-      // Successful login
-      localStorage.setItem('storelistener_token', data.token);
+      // Successful login via HttpOnly cookie
       localStorage.setItem('storelistener_user', JSON.stringify(data.user));
-      onLoginSuccess(data.token, data.user);
+      onLoginSuccess(data.user);
       onClose();
     } catch (err) {
       setErrorMsg('Failed to connect to backend server: ' + err.message);
@@ -62,6 +62,7 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
     try {
       const res = await fetch(`${BACKEND_URL}/api/auth/register`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name,
@@ -94,20 +95,20 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
 
   // Quick One-Click Demo Logins
   const quickLoginAsAdmin = () => {
-    setEmail('admin@storelistener.com');
+    setEmail('admin@store.com');
     setPassword('admin123');
     setTimeout(() => {
       fetch(`${BACKEND_URL}/api/auth/login`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'admin@storelistener.com', password: 'admin123' })
+        body: JSON.stringify({ email: 'admin@store.com', password: 'admin123' })
       })
       .then(r => r.json())
       .then(d => {
         if (d.success) {
-          localStorage.setItem('storelistener_token', d.token);
           localStorage.setItem('storelistener_user', JSON.stringify(d.user));
-          onLoginSuccess(d.token, d.user);
+          onLoginSuccess(d.user);
           onClose();
         }
       });

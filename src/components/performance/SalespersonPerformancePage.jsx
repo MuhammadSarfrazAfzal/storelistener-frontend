@@ -120,6 +120,7 @@ export default function SalespersonPerformancePage({ currentUser, token, onNavig
       if (searchRep.trim()) params.append('salesperson', searchRep.trim());
 
       const res = await fetch(`${BACKEND_URL}/api/scorecards/overview?${params.toString()}`, {
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -162,6 +163,7 @@ export default function SalespersonPerformancePage({ currentUser, token, onNavig
       const res = await fetch(
         `${BACKEND_URL}/api/scorecards/salesperson/${encodeURIComponent(rep.name)}?store=${selectedStore}`,
         {
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
             ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -183,6 +185,7 @@ export default function SalespersonPerformancePage({ currentUser, token, onNavig
     try {
       const authToken = token || localStorage.getItem('storelistener_token');
       const res = await fetch(`${BACKEND_URL}/api/scorecards/session/${sessionId}`, {
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -204,6 +207,7 @@ export default function SalespersonPerformancePage({ currentUser, token, onNavig
       const authToken = token || localStorage.getItem('storelistener_token');
       const res = await fetch(`${BACKEND_URL}/api/scorecards/session/${sessionId}/evaluate`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),

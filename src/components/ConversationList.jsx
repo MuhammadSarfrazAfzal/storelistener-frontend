@@ -54,7 +54,7 @@ export default function ConversationList({
       setLoading(true);
       try {
         const query = selectedStore ? `?storeCode=${selectedStore}` : '';
-        const res = await fetch(`${BACKEND_URL}/api/sessions${query}`);
+        const res = await fetch(`${BACKEND_URL}/api/sessions${query}`, { credentials: 'include' });
         const data = await res.json();
         if (data.success && data.sessions) {
           setSessions(data.sessions);

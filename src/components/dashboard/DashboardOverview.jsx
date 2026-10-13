@@ -41,7 +41,7 @@ export default function DashboardOverview({ onNavigate, currentUser, token }) {
   // Fetch initial stores overview and recent sessions
   const fetchStoresOverview = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/stores/overview`);
+      const res = await fetch(`${BACKEND_URL}/api/stores/overview`, { credentials: 'include' });
       const data = await res.json();
       if (data.success && Array.isArray(data.stores)) {
         setStores(data.stores);
@@ -53,7 +53,7 @@ export default function DashboardOverview({ onNavigate, currentUser, token }) {
 
   const fetchRecentSessions = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/sessions?limit=6`);
+      const res = await fetch(`${BACKEND_URL}/api/sessions?limit=6`, { credentials: 'include' });
       const data = await res.json();
       if (data.success && Array.isArray(data.sessions) && data.sessions.length > 0) {
         // Map backend schema to table format
@@ -83,7 +83,8 @@ export default function DashboardOverview({ onNavigate, currentUser, token }) {
 
     const authToken = token || localStorage.getItem('storelistener_token');
     const socket = io(BACKEND_URL, {
-      auth: { token: authToken },
+      auth: authToken ? { token: authToken } : undefined,
+      withCredentials: true,
     });
 
     socket.on('connect', () => {

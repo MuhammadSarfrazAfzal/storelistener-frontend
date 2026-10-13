@@ -40,8 +40,8 @@ export default function LiveMonitoringPage({ currentUser, token }) {
   const fetchLiveState = async () => {
     try {
       const [storesRes, sessionsRes] = await Promise.all([
-        fetch(`${BACKEND_URL}/api/stores/overview`),
-        fetch(`${BACKEND_URL}/api/sessions?status=active`),
+        fetch(`${BACKEND_URL}/api/stores/overview`, { credentials: 'include' }),
+        fetch(`${BACKEND_URL}/api/sessions?status=active`, { credentials: 'include' }),
       ]);
 
       const storesData = await storesRes.json();
@@ -94,7 +94,8 @@ export default function LiveMonitoringPage({ currentUser, token }) {
 
     const authToken = token || localStorage.getItem('storelistener_token');
     const newSocket = io(BACKEND_URL, {
-      auth: { token: authToken },
+      auth: authToken ? { token: authToken } : undefined,
+      withCredentials: true,
     });
 
     setSocket(newSocket);
