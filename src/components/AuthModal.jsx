@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, ShieldCheck, UserCheck, AlertCircle, CheckCircle, Lock, Mail, User, Store } from 'lucide-react';
 
-const BACKEND_URL = 'http://localhost:5000';
+import { BACKEND_URL } from '../config/api';
 
 export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
   const [tab, setTab] = useState('login'); // 'login' | 'register'

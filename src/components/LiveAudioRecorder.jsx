@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Square, Pause, Play, Volume2, Globe, Radio, Sparkles, AlertCircle, CheckCircle, ShieldAlert } from 'lucide-react';
 
-const BACKEND_URL = 'http://localhost:5000';
+import { BACKEND_URL } from '../config/api';
 
 export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', storeName = 'Apple Store 5th Ave', salesRep = 'Specialist', onSessionSaved }) {
   const [isRecording, setIsRecording] = useState(false);

@@ -9,7 +9,7 @@ import StoreAdminDashboard from './components/StoreAdminDashboard';
 import SalesManagerDashboard from './components/SalesManagerDashboard';
 import OwnerDashboard from './components/dashboard/OwnerDashboard';
 
-const BACKEND_URL = 'http://localhost:5000';
+import { BACKEND_URL } from './config/api';
 
 export default function App() {
   const [showOwnerPreview, setShowOwnerPreview] = useState(() => {

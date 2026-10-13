@@ -42,7 +42,7 @@ import {
   InfoOutlined as InfoIcon,
 } from '@mui/icons-material';
 
-const BACKEND_URL = 'http://localhost:5000';
+import { BACKEND_URL } from '../config/api';
 
 export default function AuthView({ onAuthSuccess, onPreviewOwnerDashboard }) {
   // Login fields

@@ -64,7 +64,7 @@ import {
   Replay as ReplayIcon,
 } from '@mui/icons-material';
 
-const BACKEND_URL = 'http://localhost:5000';
+import { BACKEND_URL } from '../../config/api';
 
 const OUTCOME_CONFIG = {
   'Sale Confirmed': {

@@ -39,7 +39,7 @@ import LiveAudioRecorder from './LiveAudioRecorder';
 import ConversationList from './ConversationList';
 import RepLeaderboard from './RepLeaderboard';
 
-const BACKEND_URL = 'http://localhost:5000';
+import { BACKEND_URL } from '../config/api';
 
 export default function StoreAdminDashboard({ currentUser, token, onLogout }) {
   const [activeTab, setActiveTab] = useState(0); // 0 = Approvals, 1 = Monitor Wall, 2 = Analytics, 3 = Terminal Recorder, 4 = Conversations, 5 = Leaderboard

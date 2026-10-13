@@ -37,7 +37,7 @@ import {
   Check as CheckIcon,
 } from '@mui/icons-material';
 
-const BACKEND_URL = 'http://localhost:5000';
+import { BACKEND_URL } from '../config/api';
 
 export default function UserApprovals({ token, onStatusChange }) {
   const [tab, setTab] = useState(0); // 0 = Pending, 1 = All Users

@@ -48,7 +48,7 @@ import {
   DeleteOutline as DeleteIcon,
 } from '@mui/icons-material';
 
-const BACKEND_URL = 'http://localhost:5000';
+import { BACKEND_URL } from '../../config/api';
 
 const SEVERITY_CONFIG = {
   success: { color: '#15803D', bgColor: '#F0FDF4', icon: SuccessIcon },

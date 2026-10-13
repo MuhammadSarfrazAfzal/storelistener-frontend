@@ -48,7 +48,7 @@ import {
   Send as SendIcon,
 } from '@mui/icons-material';
 
-const BACKEND_URL = 'http://localhost:5000';
+import { BACKEND_URL } from '../../config/api';
 
 const RULE_METADATA = [
   {

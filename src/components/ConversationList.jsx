@@ -30,7 +30,7 @@ import {
 
 import SessionDetailModal from './SessionDetailModal';
 
-const BACKEND_URL = 'http://localhost:5000';
+import { BACKEND_URL } from '../config/api';
 
 export default function ConversationList({
   sessions: propSessions,

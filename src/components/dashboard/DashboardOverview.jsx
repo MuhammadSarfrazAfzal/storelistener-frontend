@@ -30,7 +30,7 @@ import {
   MOCK_RECENT_CONVERSATIONS,
 } from '../../data/mockDashboardData';
 
-const BACKEND_URL = 'http://localhost:5000';
+import { BACKEND_URL } from '../../config/api';
 
 export default function DashboardOverview({ onNavigate, currentUser, token }) {
   const [toastMessage, setToastMessage] = useState(null);

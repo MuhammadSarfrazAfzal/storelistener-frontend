@@ -67,7 +67,7 @@ import {
   Visibility as ViewIcon,
 } from '@mui/icons-material';
 
-const BACKEND_URL = 'http://localhost:5000';
+import { BACKEND_URL } from '../../config/api';
 
 export default function CustomerSalesIntelligencePage({ currentUser, token, onNavigate }) {
   const [loading, setLoading] = useState(true);

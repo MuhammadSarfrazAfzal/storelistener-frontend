@@ -46,7 +46,7 @@ import {
   CheckCircleOutline as ActiveIcon,
 } from '@mui/icons-material';
 
-const BACKEND_URL = 'http://localhost:5000';
+import { BACKEND_URL } from '../../config/api';
 
 const STORE_LABELS = {
   'STORE-01': 'iPhone Store 01 (Downtown)',

@@ -28,6 +28,7 @@ import {
   RecordVoiceOver as SpeakerIcon,
   Person as PersonIcon,
 } from '@mui/icons-material';
+import { BACKEND_URL } from '../config/api';
 
 export default function SessionDetailModal({ session, onClose }) {
   if (!session) return null;
@@ -44,7 +45,6 @@ export default function SessionDetailModal({ session, onClose }) {
     analytics = {},
   } = session;
 
-  const BACKEND_URL = 'http://localhost:5000';
   const fullAudioUrl = audioUrl ? `${BACKEND_URL}${audioUrl}` : null;
 
   const isWon = analytics.dealOutcome === 'won';

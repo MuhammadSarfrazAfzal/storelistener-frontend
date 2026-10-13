@@ -22,7 +22,7 @@ import {
   MONITORING_STORES,
 } from '../../data/mockLiveMonitoringData';
 
-const BACKEND_URL = 'http://localhost:5000';
+import { BACKEND_URL } from '../../config/api';
 
 export default function LiveMonitoringPage({ currentUser, token }) {
   const [stores, setStores] = useState(MONITORING_STORES);
