@@ -51,6 +51,7 @@ import {
   EmojiEvents as TrophyIcon,
   Star as StarIcon,
   Refresh as RefreshIcon,
+  PictureAsPdf as PdfIcon,
   CheckCircle as SuccessIcon,
   Warning as WarningIcon,
   HelpOutline as UnknownIcon,
@@ -70,6 +71,7 @@ import {
 } from '@mui/icons-material';
 
 import { BACKEND_URL } from '../../config/api';
+import { downloadSalespersonPerformanceReport } from '../../utils/pdfReportService';
 
 const DIMENSION_CONFIG = {
   greeting: { label: 'Greeting & Opening', max: 100 },
@@ -307,6 +309,33 @@ export default function SalespersonPerformancePage({ currentUser, token, onNavig
             sx={{ fontWeight: 600, fontSize: '0.8125rem' }}
           >
             Refresh
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            color="primary"
+            startIcon={<PdfIcon />}
+            disabled={loading || salespeople.length === 0}
+            onClick={() => {
+              try {
+                downloadSalespersonPerformanceReport({
+                  salespeople,
+                  totalSessions,
+                  filters: {
+                    store: selectedStore === 'all' ? 'All Retail Branches' : selectedStore,
+                    dateRange: dateRange === 'all' ? 'All Time' : dateRange,
+                    salesperson: searchRep,
+                  },
+                  currentUser,
+                });
+              } catch (err) {
+                console.error('PDF export error:', err);
+                alert('Failed to generate Salesperson Performance PDF report.');
+              }
+            }}
+            sx={{ fontWeight: 600, fontSize: '0.8125rem' }}
+          >
+            Download PDF
           </Button>
         </Stack>
       </Stack>

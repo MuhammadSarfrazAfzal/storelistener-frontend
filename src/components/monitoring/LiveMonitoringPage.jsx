@@ -7,10 +7,14 @@ import {
   Stack,
   Alert,
   Chip,
+  Button,
 } from '@mui/material';
 import {
   Sensors as LiveIcon,
+  PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
+
+import { downloadLiveMonitoringReport } from '../../utils/pdfReportService';
 
 import StoreSelector from './StoreSelector';
 import ActiveConversationList from './ActiveConversationList';
@@ -333,6 +337,28 @@ export default function LiveMonitoringPage({ currentUser, token }) {
             Inspect counter activity, recognized speech, and session status across iPhone store branches in real time.
           </Typography>
         </Box>
+
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<PdfIcon />}
+          onClick={() => {
+            try {
+              downloadLiveMonitoringReport({
+                stores,
+                conversationsByStore,
+                selectedStoreId,
+                currentUser,
+              });
+            } catch (err) {
+              console.error('PDF export error:', err);
+              alert('Failed to generate Live Monitoring PDF report.');
+            }
+          }}
+          sx={{ fontWeight: 600, fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
+        >
+          Download PDF
+        </Button>
       </Stack>
 
       {/* Module 5 Live Synchronization Banner */}

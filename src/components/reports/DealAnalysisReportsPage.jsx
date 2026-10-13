@@ -48,6 +48,7 @@ import {
 import {
   BarChart as ReportsIcon,
   Download as ExportIcon,
+  PictureAsPdf as PdfIcon,
   Refresh as RefreshIcon,
   CheckCircle as SaleConfirmedIcon,
   HourglassEmpty as FollowUpIcon,
@@ -65,6 +66,7 @@ import {
 } from '@mui/icons-material';
 
 import { BACKEND_URL } from '../../config/api';
+import { downloadDealAnalysisReport } from '../../utils/pdfReportService';
 
 const OUTCOME_CONFIG = {
   'Sale Confirmed': {
@@ -205,6 +207,28 @@ export default function DealAnalysisReportsPage({ currentUser, token, socket }) 
     window.open(`${BACKEND_URL}/api/analytics/export-csv?${params.toString()}`, '_blank');
   };
 
+  // Download PDF Report
+  const handleDownloadPdf = () => {
+    try {
+      downloadDealAnalysisReport({
+        metrics: reportData.metrics || {},
+        intentBreakdown: reportData.intentBreakdown || [],
+        storeComparisons: reportData.storeComparisons || [],
+        conversations: reportData.conversations || [],
+        filters: {
+          store: selectedStore === 'all' ? 'All Retail Branches' : selectedStore,
+          dateRange: dateRange === 'all' ? 'All Time' : dateRange,
+          outcome: selectedOutcome,
+          intent: selectedIntent,
+        },
+        currentUser,
+      });
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      alert('Failed to generate Deal Analysis PDF report.');
+    }
+  };
+
   // Open conversation details
   const handleInspectConversation = async (conversation) => {
     try {
@@ -303,6 +327,15 @@ export default function DealAnalysisReportsPage({ currentUser, token, socket }) 
             sx={{ fontWeight: 600, fontSize: '0.8125rem' }}
           >
             Refresh
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<PdfIcon />}
+            onClick={handleDownloadPdf}
+            sx={{ fontWeight: 600, fontSize: '0.8125rem' }}
+          >
+            Download PDF
           </Button>
           <Button
             size="small"

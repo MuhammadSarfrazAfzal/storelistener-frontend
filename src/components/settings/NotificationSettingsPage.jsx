@@ -39,6 +39,7 @@ import {
   NotificationsActive as AlertIcon,
   Save as SaveIcon,
   Refresh as RefreshIcon,
+  PictureAsPdf as PdfIcon,
   Email as EmailIcon,
   CheckCircle as SuccessIcon,
   Warning as WarningIcon,
@@ -49,6 +50,7 @@ import {
 } from '@mui/icons-material';
 
 import { BACKEND_URL } from '../../config/api';
+import { downloadNotificationsReport } from '../../utils/pdfReportService';
 
 const RULE_METADATA = [
   {
@@ -287,6 +289,35 @@ export default function NotificationSettingsPage({ token, currentUser }) {
             sx={{ fontWeight: 600 }}
           >
             Reset
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<PdfIcon />}
+            disabled={loading}
+            onClick={async () => {
+              try {
+                const authToken = token || localStorage.getItem('storelistener_token');
+                const notifsRes = await fetch(`${BACKEND_URL}/api/notifications?limit=50`, {
+                  credentials: 'include',
+                  headers: { ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+                });
+                const notifsData = await notifsRes.json();
+                downloadNotificationsReport({
+                  notifications: notifsData.notifications || [],
+                  unreadCount: notifsData.unreadCount || 0,
+                  settings,
+                  currentUser,
+                });
+                setToastMessage('✓ Smart Alerts & Notifications audit report downloaded.');
+              } catch (err) {
+                console.error('PDF export error:', err);
+                setToastMessage(`Failed to export PDF: ${err.message}`);
+              }
+            }}
+            sx={{ fontWeight: 600 }}
+          >
+            Download PDF
           </Button>
           <Button
             variant="contained"

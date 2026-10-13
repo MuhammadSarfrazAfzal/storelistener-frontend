@@ -25,6 +25,7 @@ import {
   BarChartOutlined as ReportsIcon,
   EmojiEventsOutlined as ScorecardIcon,
   PsychologyOutlined as IntelligenceIcon,
+  PictureAsPdfOutlined as PdfIcon,
   SettingsOutlined as SettingsIcon,
   GraphicEq as BrandLogoIcon,
 } from '@mui/icons-material';
@@ -36,7 +37,8 @@ const NAV_ITEMS = [
   { id: 'intelligence', label: 'Sales Intelligence', icon: IntelligenceIcon },
   { id: 'performance', label: 'Scorecards', icon: ScorecardIcon },
   { id: 'stores', label: 'Stores', icon: StoresIcon },
-  { id: 'reports', label: 'Reports', icon: ReportsIcon },
+  { id: 'reports', label: 'Deal Reports', icon: ReportsIcon },
+  { id: 'pdf-reports', label: 'PDF Reports', icon: PdfIcon, badge: 'PDF' },
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
 

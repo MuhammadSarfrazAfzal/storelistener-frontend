@@ -51,6 +51,7 @@ import {
 import {
   Psychology as IntelligenceIcon,
   Download as ExportIcon,
+  PictureAsPdf as PdfIcon,
   Refresh as RefreshIcon,
   CheckCircle as SaleConfirmedIcon,
   HourglassEmpty as FollowUpIcon,
@@ -68,6 +69,7 @@ import {
 } from '@mui/icons-material';
 
 import { BACKEND_URL } from '../../config/api';
+import { downloadCustomerSalesIntelligenceReport } from '../../utils/pdfReportService';
 
 export default function CustomerSalesIntelligencePage({ currentUser, token, onNavigate }) {
   const [loading, setLoading] = useState(true);
@@ -210,6 +212,28 @@ export default function CustomerSalesIntelligencePage({ currentUser, token, onNa
   const customerRequirements = intelligenceData?.customerRequirements || [];
   const demandTrends = intelligenceData?.demandTrends || [];
 
+  // PDF Export handler
+  const handleDownloadPdf = () => {
+    try {
+      downloadCustomerSalesIntelligenceReport({
+        summary,
+        productDemand,
+        storeComparison,
+        lostSalesAndObjections,
+        customerRequirements,
+        filters: {
+          store: selectedStore === 'all' ? 'All Retail Branches' : selectedStore,
+          dateRange: dateRange === 'all' ? 'All Time' : dateRange,
+          product: selectedProduct,
+        },
+        currentUser,
+      });
+    } catch (err) {
+      console.error('PDF export error:', err);
+      alert('Failed to generate Customer Sales Intelligence PDF report.');
+    }
+  };
+
   return (
     <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, maxWidth: 1400, mx: 'auto' }}>
       {/* Page Header */}
@@ -257,6 +281,16 @@ export default function CustomerSalesIntelligencePage({ currentUser, token, onNa
             sx={{ textTransform: 'none', fontWeight: 600 }}
           >
             Refresh
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<PdfIcon />}
+            onClick={handleDownloadPdf}
+            disabled={loading || summary.totalEligibleConversations === 0}
+            size="small"
+            sx={{ textTransform: 'none', fontWeight: 600 }}
+          >
+            Download PDF
           </Button>
           <Button
             variant="contained"

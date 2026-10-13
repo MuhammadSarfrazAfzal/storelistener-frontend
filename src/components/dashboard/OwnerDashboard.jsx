@@ -13,6 +13,7 @@ import SalespersonPerformancePage from '../performance/SalespersonPerformancePag
 import NotificationSettingsPage from '../settings/NotificationSettingsPage';
 import CustomerSalesIntelligencePage from '../intelligence/CustomerSalesIntelligencePage';
 import PendingManagersSection from './PendingManagersSection';
+import PdfReportsPage from '../reports/PdfReportsPage';
 
 const SECTION_TITLES = {
   dashboard: 'Store Overview',
@@ -22,6 +23,7 @@ const SECTION_TITLES = {
   performance: 'Salesperson Performance & Quality Scorecards',
   stores: 'Stores & Manager Approvals',
   reports: 'Deal Reports & Analytics',
+  'pdf-reports': 'Executive PDF Reports Hub',
   settings: 'Smart Alerts & Notification Settings',
 };
 
@@ -72,6 +74,12 @@ export default function OwnerDashboard({ currentUser, token, onLogout }) {
           token={token}
           onNavigate={handleNavigate}
           defaultTab={activeNav === 'conversations' ? 'conversations' : 'overview'}
+        />
+      ) : activeNav === 'pdf-reports' ? (
+        <PdfReportsPage
+          currentUser={currentUser}
+          token={token}
+          onNavigate={handleNavigate}
         />
       ) : activeNav === 'settings' ? (
         <NotificationSettingsPage

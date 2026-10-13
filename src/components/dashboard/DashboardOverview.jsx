@@ -19,7 +19,10 @@ import {
   Sensors as LiveMonitorIcon,
   Forum as HistoryIcon,
   CheckCircle as LiveIcon,
+  PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
+
+import { downloadStoreOverviewReport } from '../../utils/pdfReportService';
 
 import StatCard from './StatCard';
 import StoreCard from './StoreCard';
@@ -164,6 +167,22 @@ export default function DashboardOverview({ onNavigate, currentUser, token }) {
     MOCK_KPIS[3],
   ];
 
+  const handleDownloadPdf = () => {
+    try {
+      downloadStoreOverviewReport({
+        stores,
+        kpis: dynamicKpis,
+        recentConversations,
+        filters: { store: 'All Retail Branches (3)', period: 'Real-Time Sync' },
+        currentUser,
+      });
+      setToastMessage('✓ Store Overview PDF report downloaded successfully.');
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      setToastMessage('Failed to generate Store Overview PDF report.');
+    }
+  };
+
   return (
     <Box sx={{ maxWidth: 1440, mx: 'auto' }}>
       {/* A. Welcome Section & Header */}
@@ -202,6 +221,15 @@ export default function DashboardOverview({ onNavigate, currentUser, token }) {
 
         {/* Quick Navigation Shortcuts */}
         <Stack direction="row" spacing={1.5}>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<PdfIcon />}
+            onClick={handleDownloadPdf}
+            sx={{ fontWeight: 600, fontSize: '0.8125rem' }}
+          >
+            Download PDF
+          </Button>
           <Button
             size="small"
             variant="outlined"
