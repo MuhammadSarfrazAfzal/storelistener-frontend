@@ -46,7 +46,7 @@ import {
   CheckCircleOutline as ActiveIcon,
 } from '@mui/icons-material';
 
-import { BACKEND_URL } from '../../config/api';
+import { BACKEND_URL, DEFAULT_SOCKET_OPTIONS } from '../../config/api';
 
 const STORE_LABELS = {
   'STORE-01': 'iPhone Store 01 (Downtown)',
@@ -87,8 +87,8 @@ export default function PendingManagersSection({ currentUser, token }) {
 
     // Listen for real-time signup and status change events
     const socket = io(BACKEND_URL, {
+      ...DEFAULT_SOCKET_OPTIONS,
       auth: token ? { token } : undefined,
-      withCredentials: true,
     });
 
     socket.on('sales_manager_registered', () => {

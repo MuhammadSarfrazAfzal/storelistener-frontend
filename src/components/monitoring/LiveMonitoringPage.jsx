@@ -26,7 +26,7 @@ import {
   MONITORING_STORES,
 } from '../../data/mockLiveMonitoringData';
 
-import { BACKEND_URL } from '../../config/api';
+import { BACKEND_URL, DEFAULT_SOCKET_OPTIONS } from '../../config/api';
 
 export default function LiveMonitoringPage({ currentUser, token }) {
   const [stores, setStores] = useState(MONITORING_STORES);
@@ -108,11 +108,8 @@ export default function LiveMonitoringPage({ currentUser, token }) {
 
     const authToken = token || localStorage.getItem('storelistener_token');
     const newSocket = io(BACKEND_URL, {
+      ...DEFAULT_SOCKET_OPTIONS,
       auth: authToken ? { token: authToken } : undefined,
-      withCredentials: true,
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1500,
     });
 
     setSocket(newSocket);

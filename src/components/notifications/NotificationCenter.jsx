@@ -48,7 +48,7 @@ import {
   DeleteOutline as DeleteIcon,
 } from '@mui/icons-material';
 
-import { BACKEND_URL } from '../../config/api';
+import { BACKEND_URL, DEFAULT_SOCKET_OPTIONS } from '../../config/api';
 
 const SEVERITY_CONFIG = {
   success: { color: '#15803D', bgColor: '#F0FDF4', icon: SuccessIcon },
@@ -92,7 +92,13 @@ export default function NotificationCenter({ token, socket, onNavigate }) {
   useEffect(() => {
     fetchNotifications();
 
-    const activeSocket = socket || io(BACKEND_URL, { reconnection: true, timeout: 5000, withCredentials: true });
+    const authToken = token || localStorage.getItem('storelistener_token');
+    const activeSocket =
+      socket ||
+      io(BACKEND_URL, {
+        ...DEFAULT_SOCKET_OPTIONS,
+        auth: authToken ? { token: authToken } : undefined,
+      });
 
     const handleNewNotification = (data) => {
       if (data && data.notification) {

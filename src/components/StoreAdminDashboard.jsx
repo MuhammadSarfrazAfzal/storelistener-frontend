@@ -39,7 +39,7 @@ import LiveAudioRecorder from './LiveAudioRecorder';
 import ConversationList from './ConversationList';
 import RepLeaderboard from './RepLeaderboard';
 
-import { BACKEND_URL } from '../config/api';
+import { BACKEND_URL, DEFAULT_SOCKET_OPTIONS } from '../config/api';
 
 export default function StoreAdminDashboard({ currentUser, token, onLogout }) {
   const [activeTab, setActiveTab] = useState(0); // 0 = Approvals, 1 = Monitor Wall, 2 = Analytics, 3 = Terminal Recorder, 4 = Conversations, 5 = Leaderboard
@@ -82,7 +82,10 @@ export default function StoreAdminDashboard({ currentUser, token, onLogout }) {
     fetchDashboardStats();
 
     // Socket.io for real-time notifications
-    const socket = io(BACKEND_URL, { withCredentials: true });
+    const socket = io(BACKEND_URL, {
+      ...DEFAULT_SOCKET_OPTIONS,
+      auth: token ? { token } : undefined,
+    });
     socket.on('connect', () => setSocketConnected(true));
     socket.on('disconnect', () => setSocketConnected(false));
 

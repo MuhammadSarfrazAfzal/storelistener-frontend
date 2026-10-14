@@ -33,7 +33,7 @@ import {
   MOCK_RECENT_CONVERSATIONS,
 } from '../../data/mockDashboardData';
 
-import { BACKEND_URL } from '../../config/api';
+import { BACKEND_URL, DEFAULT_SOCKET_OPTIONS } from '../../config/api';
 
 export default function DashboardOverview({ onNavigate, currentUser, token }) {
   const [toastMessage, setToastMessage] = useState(null);
@@ -86,8 +86,8 @@ export default function DashboardOverview({ onNavigate, currentUser, token }) {
 
     const authToken = token || localStorage.getItem('storelistener_token');
     const socket = io(BACKEND_URL, {
+      ...DEFAULT_SOCKET_OPTIONS,
       auth: authToken ? { token: authToken } : undefined,
-      withCredentials: true,
     });
 
     socket.on('connect', () => {
