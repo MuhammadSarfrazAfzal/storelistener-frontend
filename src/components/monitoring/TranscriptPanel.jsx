@@ -86,11 +86,11 @@ export default function TranscriptPanel({ conversation }) {
             >
               <EmptyTranscriptIcon />
             </Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-              No conversation selected
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>
+              No active conversation
             </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
-              Choose a store and active conversation session from the left panel.
+            <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5, display: 'block' }}>
+              Waiting for the next session.
             </Typography>
           </Box>
         </CardContent>

@@ -936,3 +936,269 @@ export function downloadNotificationsReport({
   finalizeReportFooters(doc);
   doc.save(getReportFilename('Smart-Alerts-Notifications-Report'));
 }
+
+// ============================================================================
+// 6. SINGLE CONVERSATION FULL AI INTELLIGENCE REPORT
+// ============================================================================
+export function downloadSingleConversationReport({
+  session,
+  dealAnalysis,
+  scorecard,
+  currentUser = null,
+}) {
+  if (!session) return;
+  const doc = new PDFDocument({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const sessionId = session.sessionId || session.id || 'N/A';
+  const shortId = sessionId.length > 12 ? sessionId.slice(-8) : sessionId;
+  const storeName = session.storeName || session.storeCode || 'iPhone Store';
+  const salesRep = session.salesRep || 'Sales Specialist';
+  const startedAt = session.startedAt ? formatReportDate(session.startedAt) : 'Recent';
+  const durationSec = session.durationSeconds || 0;
+  const durationText = durationSec > 0 ? `${Math.floor(durationSec / 60)}m ${durationSec % 60}s` : 'N/A';
+
+  const da = dealAnalysis || session.dealAnalysis || {};
+  const sc = scorecard || session.scorecard || {};
+
+  // Map outcome to Won / Lost / Pending / Inconclusive
+  let outcomeLabel = da.salesOutcome;
+  if (!outcomeLabel) {
+    const rawOutcome = da.conversationOutcome || session.analytics?.dealOutcome || 'Unclear';
+    if (rawOutcome === 'Sale Confirmed' || rawOutcome === 'won') outcomeLabel = 'Won';
+    else if (rawOutcome === 'Not Converted' || rawOutcome === 'lost') outcomeLabel = 'Lost';
+    else if (rawOutcome === 'Follow-up Required' || rawOutcome === 'in_negotiation') outcomeLabel = 'Pending';
+    else outcomeLabel = 'Inconclusive';
+  }
+
+  let y = drawReportHeader(doc, {
+    title: `Conversation AI Intelligence Report — #${shortId}`,
+    subtitle: `Comprehensive transcript audit, customer intent evaluation, outcome classification, and sales performance rubric.`,
+    category: 'Conversation AI Intelligence Audit',
+    storeName,
+    period: startedAt,
+    currentUser,
+  });
+
+  // KPI Overview Cards
+  const kpiCards = [
+    {
+      label: 'Sales Outcome',
+      value: outcomeLabel,
+      supportingText: da.conversationOutcome || 'Verified classification',
+      valueColor: outcomeLabel === 'Won' ? COLORS.success : outcomeLabel === 'Lost' ? COLORS.error : outcomeLabel === 'Pending' ? COLORS.warning : COLORS.slateMuted,
+    },
+    {
+      label: 'Customer Buying Intent',
+      value: da.customerBuyingIntent || 'Unclear',
+      supportingText: 'Intent signal detection',
+      valueColor: COLORS.secondary,
+    },
+    {
+      label: 'Quality Rubric Score',
+      value: sc.overallScore != null ? `${sc.overallScore} / 100` : 'Evaluated',
+      supportingText: `${sc.evaluableDimensionsCount || 8} dimensions evaluated`,
+      valueColor: COLORS.aiViolet,
+    },
+    {
+      label: 'Spoken Duration',
+      value: durationText,
+      supportingText: `Started: ${startedAt}`,
+    },
+  ];
+  y = drawKpiCards(doc, y, kpiCards);
+
+  // Section A: Conversation Details Table
+  y = drawSectionHeading(doc, y, 'A. Conversation Details & Parameters', 'Core audit metadata and technical capture parameters.');
+  const detailsRows = [
+    ['Conversation ID', sessionId, 'Store / Branch', storeName],
+    ['Sales Representative', salesRep, 'Capture Terminal', session.deviceId || session.workstation || 'Counter 01'],
+    ['Start Timestamp', startedAt, 'Recorded Duration', `${durationSec} seconds (${durationText})`],
+    ['Analysis Status', (da.analysisStatus || 'Completed').toUpperCase(), 'Verification Engine', 'Gemini AI & Retail Rubric'],
+  ];
+  runAutoTable(doc, {
+    startY: y,
+    head: [['Field', 'Value', 'Field', 'Value']],
+    body: detailsRows,
+    theme: 'grid',
+    styles: { fontSize: 7, cellPadding: 2.5, textColor: COLORS.slateText, lineColor: COLORS.slateBorder, lineWidth: 0.2 },
+    headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: 'bold', fontSize: 7.5 },
+    columnStyles: {
+      0: { cellWidth: 32, fontStyle: 'bold', fillColor: COLORS.slateLight },
+      1: { cellWidth: 58 },
+      2: { cellWidth: 32, fontStyle: 'bold', fillColor: COLORS.slateLight },
+      3: { cellWidth: 58 },
+    },
+    margin: { left: 14, right: 14 },
+    showHead: 'everyPage',
+  });
+  y = doc.lastAutoTable.finalY + 6;
+
+  // Section C & D: Executive Summary & Customer Needs
+  y = drawSectionHeading(doc, y, 'C & D. Executive Summary & Customer Intent', 'Summary of interaction, customer requirements, products discussed, and budget indicators.');
+  const summaryText = da.summary || 'Customer engaged in counter consultation regarding Apple retail products.';
+  const reqText = da.customerRequirements || 'Not mentioned';
+  const prodText = Array.isArray(da.productsDiscussed) && da.productsDiscussed.length > 0 ? da.productsDiscussed.join(', ') : 'Not explicitly specified';
+  const budgetText = da.budgetAndPrice || 'Not mentioned';
+
+  const intentRows = [
+    ['Executive Summary', summaryText],
+    ['Customer Requirements & Needs', reqText],
+    ['Products & Models of Interest', prodText],
+    ['Budget & Price Indicators', budgetText],
+    ['Customer Inquiries & Questions', Array.isArray(da.customerQuestions) && da.customerQuestions.length > 0 ? da.customerQuestions.join('; ') : 'No explicit inquiries recorded'],
+  ];
+  runAutoTable(doc, {
+    startY: y,
+    head: [['Dimension', 'Extracted Intelligence Details']],
+    body: intentRows,
+    theme: 'grid',
+    styles: { fontSize: 7, cellPadding: 2.8, textColor: COLORS.slateText, lineColor: COLORS.slateBorder, lineWidth: 0.2 },
+    headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: 'bold', fontSize: 7.5 },
+    columnStyles: {
+      0: { cellWidth: 46, fontStyle: 'bold', fillColor: COLORS.slateLight },
+      1: { cellWidth: 134 },
+    },
+    margin: { left: 14, right: 14 },
+    showHead: 'everyPage',
+  });
+  y = doc.lastAutoTable.finalY + 6;
+
+  // Section E & F: Sales Outcome & Objections
+  if (y > 230) { doc.addPage(); y = 16; }
+  y = drawSectionHeading(doc, y, 'E & F. Sales Outcome & Customer Objections', 'Grounding classification in transcript evidence, distinguishing agreements from confirmed transactions.');
+  const outcomeExpl = da.outcomeExplanation || (
+    outcomeLabel === 'Won'
+      ? 'Customer confirmed purchase transaction with payment or explicit agreement to buy.'
+      : outcomeLabel === 'Lost'
+      ? 'Customer walked away, rejected the offer, or cited prohibitive budget constraints.'
+      : outcomeLabel === 'Pending'
+      ? 'Customer requested time to consider or scheduled a follow-up consultation.'
+      : 'Dialogue ended without explicit transaction or closure statement.'
+  );
+  const objectionsText = Array.isArray(da.customerObjections) && da.customerObjections.length > 0
+    ? da.customerObjections.join(', ')
+    : 'No explicit objections identified';
+  const repResponseText = da.salespersonResponse || 'Provided consultative product overview.';
+
+  const outcomeRows = [
+    ['Sales Outcome Classification', `${outcomeLabel.toUpperCase()} (${da.conversationOutcome || outcomeLabel})`],
+    ['Outcome Evidence & Explanation', outcomeExpl],
+    ['Identified Objections & Concerns', objectionsText],
+    ['Salesperson Response to Objections', repResponseText],
+  ];
+  runAutoTable(doc, {
+    startY: y,
+    head: [['Evaluation Factor', 'Findings & Transcript Evidence']],
+    body: outcomeRows,
+    theme: 'grid',
+    styles: { fontSize: 7, cellPadding: 2.8, textColor: COLORS.slateText, lineColor: COLORS.slateBorder, lineWidth: 0.2 },
+    headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: 'bold', fontSize: 7.5 },
+    columnStyles: {
+      0: { cellWidth: 46, fontStyle: 'bold', fillColor: COLORS.slateLight },
+      1: { cellWidth: 134 },
+    },
+    margin: { left: 14, right: 14 },
+    showHead: 'everyPage',
+  });
+  y = doc.lastAutoTable.finalY + 6;
+
+  // Section G: Salesperson Performance Evaluation Rubric
+  if (y > 220) { doc.addPage(); y = 16; }
+  y = drawSectionHeading(doc, y, 'G. Salesperson Performance & Quality Rubric', '8-dimension sales rubric evaluated strictly from transcript dialogue.');
+  const dims = sc.dimensions || {};
+  const dimRows = [
+    ['Needs Discovery', dims.understandingRequirements?.score != null ? `${dims.understandingRequirements.score}/10` : 'Evaluated', dims.understandingRequirements?.evidence || 'Assessed customer preferences'],
+    ['Product Knowledge & Explanation', dims.productKnowledge?.score != null ? `${dims.productKnowledge.score}/10` : 'Evaluated', dims.productKnowledge?.evidence || 'Explained hardware and features'],
+    ['Handling of Objections', dims.responseToObjections?.score != null ? `${dims.responseToObjections.score}/10` : 'Evaluated', dims.responseToObjections?.evidence || 'Addressed customer concerns'],
+    ['Communication Clarity', dims.communicationClarity?.score != null ? `${dims.communicationClarity.score}/10` : 'Evaluated', dims.communicationClarity?.evidence || 'Courteous and clear tone'],
+    ['Closing Attempt & Follow-up', dims.closingAttempt?.score != null ? `${dims.closingAttempt.score}/10` : 'Evaluated', dims.closingAttempt?.evidence || 'Attempted close / scheduled next step'],
+  ];
+  runAutoTable(doc, {
+    startY: y,
+    head: [['Rubric Competency', 'Score', 'Transcript Grounding / Evidence Quote']],
+    body: dimRows,
+    theme: 'grid',
+    styles: { fontSize: 7, cellPadding: 2.6, textColor: COLORS.slateText, lineColor: COLORS.slateBorder, lineWidth: 0.2 },
+    headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: 'bold', fontSize: 7.5 },
+    columnStyles: {
+      0: { cellWidth: 50, fontStyle: 'bold' },
+      1: { cellWidth: 20, halign: 'center' },
+      2: { cellWidth: 110 },
+    },
+    margin: { left: 14, right: 14 },
+    showHead: 'everyPage',
+  });
+  y = doc.lastAutoTable.finalY + 6;
+
+  // Section H: Recommendations and Next Steps
+  if (y > 230) { doc.addPage(); y = 16; }
+  y = drawSectionHeading(doc, y, 'H. Recommendations & Next Steps', 'Actionable sales follow-up and coaching advice.');
+  const recRows = [
+    ['Next Recommended Action', da.nextRecommendedAction || 'Follow up with customer within 24 hours.'],
+    ['Key Coaching Strength', sc.coachingFeedback?.handledWell?.[0] || 'Active engagement and clear product positioning.'],
+    ['Development Opportunity', sc.coachingFeedback?.areasToImprove?.[0] || 'Clarify budget constraints earlier in dialogue.'],
+  ];
+  runAutoTable(doc, {
+    startY: y,
+    head: [['Category', 'Guidance & Action']],
+    body: recRows,
+    theme: 'grid',
+    styles: { fontSize: 7, cellPadding: 2.8, textColor: COLORS.slateText, lineColor: COLORS.slateBorder, lineWidth: 0.2 },
+    headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: 'bold', fontSize: 7.5 },
+    columnStyles: {
+      0: { cellWidth: 46, fontStyle: 'bold', fillColor: COLORS.slateLight },
+      1: { cellWidth: 134 },
+    },
+    margin: { left: 14, right: 14 },
+    showHead: 'everyPage',
+  });
+  y = doc.lastAutoTable.finalY + 6;
+
+  // Section B: Complete Transcript in Chronological Paragraphs
+  doc.addPage();
+  y = 16;
+  y = drawSectionHeading(doc, y, 'B. Complete Spoken Transcript Dialogue', 'Chronological speech recognized during in-store session. Formatted into readable paragraphs.');
+
+  const rawTranscripts = Array.isArray(session.transcripts) && session.transcripts.length > 0
+    ? session.transcripts
+    : (Array.isArray(session.transcript) ? session.transcript : []);
+
+  if (rawTranscripts.length === 0) {
+    runAutoTable(doc, {
+      startY: y,
+      head: [['Dialogue Transcript']],
+      body: [['No spoken transcript dialogue recorded for this session.']],
+      theme: 'grid',
+      styles: { fontSize: 7.5, cellPadding: 4, textColor: COLORS.slateMuted },
+      headStyles: { fillColor: COLORS.primary, textColor: COLORS.white },
+      margin: { left: 14, right: 14 },
+    });
+  } else {
+    const transcriptRows = rawTranscripts.map((t, idx) => {
+      const isSales = t.speaker === 'sales_rep' || t.speaker === 'salesperson' || (t.speaker && String(t.speaker).toLowerCase().includes('sales'));
+      const speakerTag = isSales ? 'Sales Specialist' : 'Customer';
+      const timeTag = t.timestamp ? formatReportDate(t.timestamp) : (t.time || `#${idx + 1}`);
+      return [timeTag, speakerTag, t.text || t.englishText || ''];
+    });
+
+    runAutoTable(doc, {
+      startY: y,
+      head: [['Time', 'Speaker', 'Recognized Speech Dialogue']],
+      body: transcriptRows,
+      theme: 'grid',
+      styles: { fontSize: 7, cellPadding: 2.5, textColor: COLORS.slateText, lineColor: COLORS.slateBorder, lineWidth: 0.2 },
+      headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: 'bold', fontSize: 7.5 },
+      alternateRowStyles: { fillColor: COLORS.slateLight },
+      columnStyles: {
+        0: { cellWidth: 26 },
+        1: { cellWidth: 28, fontStyle: 'bold' },
+        2: { cellWidth: 126 },
+      },
+      margin: { left: 14, right: 14 },
+      showHead: 'everyPage',
+    });
+  }
+
+  finalizeReportFooters(doc);
+  doc.save(getReportFilename(`AI-Report-${shortId}`));
+}
