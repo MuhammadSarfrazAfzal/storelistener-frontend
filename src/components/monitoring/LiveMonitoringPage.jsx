@@ -40,12 +40,12 @@ export default function LiveMonitoringPage({ currentUser, token }) {
   const [socket, setSocket] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
 
-  // Fetch store statuses and active sessions from backend
+  // Fetch store statuses and recent/active sessions from backend
   const fetchLiveState = async () => {
     try {
       const [storesRes, sessionsRes] = await Promise.all([
         fetch(`${BACKEND_URL}/api/stores/overview`, { credentials: 'include' }),
-        fetch(`${BACKEND_URL}/api/sessions?status=active`, { credentials: 'include' }),
+        fetch(`${BACKEND_URL}/api/sessions?limit=30`, { credentials: 'include' }),
       ]);
 
       const storesData = await storesRes.json();
@@ -58,35 +58,45 @@ export default function LiveMonitoringPage({ currentUser, token }) {
         const byStore = { 'store-01': [], 'store-02': [], 'store-03': [] };
 
         sessionsData.sessions.forEach((s) => {
-          const sId = (s.storeCode || '').toLowerCase().includes('02')
-            ? 'store-02'
-            : (s.storeCode || '').toLowerCase().includes('03')
-            ? 'store-03'
-            : 'store-01';
+          const code = (s.storeCode || s.storeId || '').toLowerCase();
+          const sId = code.includes('02') ? 'store-02' : code.includes('03') ? 'store-03' : 'store-01';
+
+          const rawTranscripts = Array.isArray(s.transcripts) && s.transcripts.length > 0
+            ? s.transcripts
+            : (Array.isArray(s.transcript) ? s.transcript : []);
 
           byStore[sId].push({
             id: s.sessionId || s._id,
             title: s.title || `Live Session - ${new Date(s.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-            storeName: s.storeName || `iPhone Store ${sId.slice(-2)}`,
+            storeName: s.storeName || (sId === 'store-02' ? 'iPhone Store 02' : sId === 'store-03' ? 'iPhone Store 03' : 'iPhone Store 01'),
             workstation: s.workstation || 'Counter 01',
             salesRep: s.salesRep || 'Sales Specialist',
             startedAt: new Date(s.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            elapsedSimulated: 'Active',
-            dealStatus: 'Pending',
-            isLive: true,
-            status: 'active',
-            notes: 'Voice-activated customer interaction streaming from floor counter.',
-            transcript: (s.transcript || []).map((t, idx) => ({
-              id: `trans-${idx}`,
-              speaker: t.speaker === 'salesperson' ? 'Salesperson' : 'Customer',
-              text: t.englishText || t.text,
-              time: t.timestamp ? new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live',
-              isFinal: true,
-            })),
+            elapsedSimulated: s.status === 'active' ? 'Active' : (s.durationSeconds ? `${Math.floor(s.durationSeconds / 60)}m ${s.durationSeconds % 60}s` : 'Completed'),
+            dealStatus: s.analytics?.dealOutcome === 'won' ? 'Closed' : s.analytics?.dealOutcome === 'lost' ? 'Not Closed' : 'Pending',
+            isLive: s.status === 'active',
+            status: s.status || 'completed',
+            notes: 'Counter conversation record.',
+            transcript: rawTranscripts.map((t, idx) => {
+              const isSales = t.speaker === 'sales_rep' || t.speaker === 'salesperson' || (t.speaker && String(t.speaker).toLowerCase().includes('sales'));
+              return {
+                id: t.segmentId || `trans-${idx}`,
+                speaker: isSales ? 'Sales Specialist' : 'Customer',
+                text: t.text || t.englishText || '',
+                time: t.timestamp ? new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live',
+                isFinal: true,
+              };
+            }),
           });
         });
 
         setConversationsByStore(byStore);
+
+        // Auto-select first active or available conversation
+        const currentStoreConvs = byStore[selectedStoreId] || [];
+        if (currentStoreConvs.length > 0 && !selectedConversationId) {
+          setSelectedConversationId(currentStoreConvs[0].id);
+        }
       }
     } catch (err) {
       console.warn('Live monitoring state fetch warning:', err.message);
@@ -100,6 +110,9 @@ export default function LiveMonitoringPage({ currentUser, token }) {
     const newSocket = io(BACKEND_URL, {
       auth: authToken ? { token: authToken } : undefined,
       withCredentials: true,
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1500,
     });
 
     setSocket(newSocket);
@@ -123,11 +136,8 @@ export default function LiveMonitoringPage({ currentUser, token }) {
 
     // Real-time session started from desktop app
     newSocket.on('session_started', (payload) => {
-      const storeKey = (payload.storeId || payload.storeCode || 'store-01').toLowerCase().includes('02')
-        ? 'store-02'
-        : (payload.storeId || payload.storeCode || '').toLowerCase().includes('03')
-        ? 'store-03'
-        : 'store-01';
+      const code = (payload.storeCode || payload.storeId || '').toLowerCase();
+      const storeKey = code.includes('02') ? 'store-02' : code.includes('03') ? 'store-03' : 'store-01';
 
       const newConv = {
         id: payload.sessionId,
@@ -136,7 +146,7 @@ export default function LiveMonitoringPage({ currentUser, token }) {
         workstation: payload.workstation || 'Counter 01',
         salesRep: payload.salesRep || 'Sales Specialist',
         startedAt: new Date(payload.startedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        elapsedSimulated: '00:01',
+        elapsedSimulated: 'Active',
         dealStatus: payload.dealStatus || 'Pending',
         isLive: true,
         status: 'active',
@@ -146,9 +156,11 @@ export default function LiveMonitoringPage({ currentUser, token }) {
 
       setConversationsByStore((prev) => {
         const currentList = prev[storeKey] || [];
-        // Prevent duplicate session entries
         if (currentList.some((c) => c.id === payload.sessionId)) {
-          return prev;
+          return {
+            ...prev,
+            [storeKey]: currentList.map((c) => (c.id === payload.sessionId ? { ...c, isLive: true, status: 'active' } : c)),
+          };
         }
         return {
           ...prev,
@@ -156,22 +168,30 @@ export default function LiveMonitoringPage({ currentUser, token }) {
         };
       });
 
-      // Automatically select this conversation if viewing this store
       setSelectedConversationId(payload.sessionId);
       setSelectedStoreId(storeKey);
     });
 
     // Real-time transcript chunk from speech recognition
     newSocket.on('transcript_stream_chunk', (chunk) => {
-      const { sessionId, storeId, text, isFinal, timestamp, speaker } = chunk;
-      const storeKey = (storeId || '').toLowerCase().includes('02')
-        ? 'store-02'
-        : (storeId || '').toLowerCase().includes('03')
-        ? 'store-03'
-        : 'store-01';
+      const { sessionId, storeId, storeCode, text, isFinal, timestamp, speaker } = chunk;
 
       setConversationsByStore((prev) => {
-        const storeList = prev[storeKey] || [];
+        // 1. Resolve which store this session belongs to
+        let targetStoreKey = null;
+        for (const [k, list] of Object.entries(prev)) {
+          if (list.some((c) => c.id === sessionId)) {
+            targetStoreKey = k;
+            break;
+          }
+        }
+
+        if (!targetStoreKey) {
+          const code = (storeCode || storeId || '').toLowerCase();
+          targetStoreKey = code.includes('02') ? 'store-02' : code.includes('03') ? 'store-03' : 'store-01';
+        }
+
+        const storeList = prev[targetStoreKey] || [];
         const convIndex = storeList.findIndex((c) => c.id === sessionId);
 
         let conv;
@@ -179,11 +199,10 @@ export default function LiveMonitoringPage({ currentUser, token }) {
         if (convIndex >= 0) {
           conv = { ...storeList[convIndex] };
         } else {
-          // If session wasn't registered yet, create placeholder
           conv = {
             id: sessionId,
             title: `Live Session - ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-            storeName: `iPhone Store ${storeKey.slice(-2)}`,
+            storeName: chunk.storeName || (targetStoreKey === 'store-02' ? 'iPhone Store 02' : targetStoreKey === 'store-03' ? 'iPhone Store 03' : 'iPhone Store 01'),
             workstation: 'Counter 01',
             salesRep: 'Sales Specialist',
             startedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -200,14 +219,16 @@ export default function LiveMonitoringPage({ currentUser, token }) {
           ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
           : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+        const isSales = speaker === 'sales_rep' || speaker === 'salesperson' || (speaker && String(speaker).toLowerCase().includes('sales'));
+        const speakerLabel = isSales ? 'Sales Specialist' : 'Customer';
         const currentTranscript = [...(conv.transcript || [])];
 
         if (isFinal) {
-          // Remove any pending interim line
+          // Remove any pending interim line and append confirmed final segment
           const filtered = currentTranscript.filter((t) => t.isFinal !== false);
           filtered.push({
-            id: `final-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            speaker: speaker === 'salesperson' ? 'Salesperson' : 'Customer',
+            id: chunk.segmentId || `final-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            speaker: speakerLabel,
             text: text,
             time: formattedTime,
             isFinal: true,
@@ -219,13 +240,14 @@ export default function LiveMonitoringPage({ currentUser, token }) {
           if (lastIndex >= 0) {
             currentTranscript[lastIndex] = {
               ...currentTranscript[lastIndex],
+              speaker: speakerLabel,
               text: text,
               time: formattedTime,
             };
           } else {
             currentTranscript.push({
               id: 'interim',
-              speaker: speaker === 'salesperson' ? 'Salesperson' : 'Customer',
+              speaker: speakerLabel,
               text: text,
               time: formattedTime,
               isFinal: false,
@@ -240,27 +262,33 @@ export default function LiveMonitoringPage({ currentUser, token }) {
 
         return {
           ...prev,
-          [storeKey]: updatedList,
+          [targetStoreKey]: updatedList,
         };
       });
 
-      // If nothing selected, select this active conversation
       setSelectedConversationId((prevId) => prevId || sessionId);
     });
 
-    // Real-time session closure (e.g. 15s silence closure)
+    // Real-time session closure (manual save & close or completion)
     newSocket.on('session_ended', (payload) => {
-      const storeKey = (payload.storeId || '').toLowerCase().includes('02')
-        ? 'store-02'
-        : (payload.storeId || '').toLowerCase().includes('03')
-        ? 'store-03'
-        : 'store-01';
-
       setConversationsByStore((prev) => {
-        const storeList = prev[storeKey] || [];
+        let targetStoreKey = null;
+        for (const [k, list] of Object.entries(prev)) {
+          if (list.some((c) => c.id === payload.sessionId)) {
+            targetStoreKey = k;
+            break;
+          }
+        }
+
+        if (!targetStoreKey) {
+          const code = (payload.storeCode || payload.storeId || '').toLowerCase();
+          targetStoreKey = code.includes('02') ? 'store-02' : code.includes('03') ? 'store-03' : 'store-01';
+        }
+
+        const storeList = prev[targetStoreKey] || [];
         return {
           ...prev,
-          [storeKey]: storeList.map((c) => {
+          [targetStoreKey]: storeList.map((c) => {
             if (c.id === payload.sessionId) {
               return {
                 ...c,

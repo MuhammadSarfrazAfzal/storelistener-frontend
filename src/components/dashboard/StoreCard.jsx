@@ -123,21 +123,27 @@ export default function StoreCard({ store, onAction }) {
         );
       case 'Listening':
         return (
-          <Chip
-            size="small"
-            icon={<HearingIcon sx={{ fontSize: '12px !important', color: '#16A34A !important' }} />}
-            label="Listening"
+          <Box
             sx={{
-              height: 22,
-              fontSize: '0.6875rem',
-              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.75,
+              px: 1.25,
+              py: 0.35,
               bgcolor: '#F0FDF4',
-              borderColor: '#86EFAC',
-              borderWidth: 1,
-              borderStyle: 'solid',
-              color: '#15803D',
+              borderRadius: 3,
+              border: '1px solid #86EFAC',
             }}
-          />
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+              <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: '#16A34A', animation: 'pulseDot 1.4s infinite ease-in-out' }} />
+              <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: '#16A34A', animation: 'pulseDot 1.4s infinite ease-in-out', animationDelay: '0.25s' }} />
+              <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: '#16A34A', animation: 'pulseDot 1.4s infinite ease-in-out', animationDelay: '0.5s' }} />
+            </Box>
+            <Typography variant="caption" sx={{ fontSize: '0.6875rem', fontWeight: 700, color: '#15803D' }}>
+              Listening...
+            </Typography>
+          </Box>
         );
       case 'Idle':
         return (
