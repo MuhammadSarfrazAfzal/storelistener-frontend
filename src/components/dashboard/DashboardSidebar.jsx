@@ -23,9 +23,6 @@ import {
   ForumOutlined as ConversationsIcon,
   StorefrontOutlined as StoresIcon,
   BarChartOutlined as ReportsIcon,
-  EmojiEventsOutlined as ScorecardIcon,
-  PsychologyOutlined as IntelligenceIcon,
-  PictureAsPdfOutlined as PdfIcon,
   SettingsOutlined as SettingsIcon,
   GraphicEq as BrandLogoIcon,
 } from '@mui/icons-material';
@@ -34,11 +31,8 @@ const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: DashboardIcon },
   { id: 'live-monitoring', label: 'Live Monitoring', icon: LiveMonitoringIcon },
   { id: 'conversations', label: 'Conversations', icon: ConversationsIcon },
-  { id: 'intelligence', label: 'Sales Intelligence', icon: IntelligenceIcon },
-  { id: 'performance', label: 'Scorecards', icon: ScorecardIcon },
+  { id: 'reports', label: 'Daily Reports', icon: ReportsIcon },
   { id: 'stores', label: 'Stores', icon: StoresIcon },
-  { id: 'reports', label: 'Deal Reports', icon: ReportsIcon },
-  { id: 'pdf-reports', label: 'PDF Reports', icon: PdfIcon, badge: 'PDF' },
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
 

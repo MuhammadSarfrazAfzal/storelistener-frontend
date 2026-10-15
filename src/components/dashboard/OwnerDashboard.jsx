@@ -4,26 +4,22 @@
  */
 
 import { useState } from 'react';
+import { Box } from '@mui/material';
 import DashboardLayout from './DashboardLayout';
 import DashboardOverview from './DashboardOverview';
 import NavigationPlaceholder from './NavigationPlaceholder';
 import LiveMonitoringPage from '../monitoring/LiveMonitoringPage';
-import DealAnalysisReportsPage from '../reports/DealAnalysisReportsPage';
-import SalespersonPerformancePage from '../performance/SalespersonPerformancePage';
+import DailyReportsPage from '../reports/DailyReportsPage';
+import ConversationList from '../ConversationList';
 import NotificationSettingsPage from '../settings/NotificationSettingsPage';
-import CustomerSalesIntelligencePage from '../intelligence/CustomerSalesIntelligencePage';
 import PendingManagersSection from './PendingManagersSection';
-import PdfReportsPage from '../reports/PdfReportsPage';
 
 const SECTION_TITLES = {
   dashboard: 'Store Overview',
   'live-monitoring': 'Live Monitoring',
-  conversations: 'Conversations & Deal Analysis',
-  intelligence: 'Customer & Sales Intelligence Dashboard',
-  performance: 'Salesperson Performance & Quality Scorecards',
+  conversations: 'Conversations & Recordings',
+  reports: 'Daily Reports',
   stores: 'Stores & Manager Approvals',
-  reports: 'Deal Reports & Analytics',
-  'pdf-reports': 'Executive PDF Reports Hub',
   settings: 'Smart Alerts & Notification Settings',
 };
 
@@ -56,27 +52,15 @@ export default function OwnerDashboard({ currentUser, token, onLogout }) {
           token={token}
           onNavigate={handleNavigate}
         />
-      ) : activeNav === 'performance' ? (
-        <SalespersonPerformancePage
-          currentUser={currentUser}
-          token={token}
-          onNavigate={handleNavigate}
-        />
-      ) : activeNav === 'intelligence' ? (
-        <CustomerSalesIntelligencePage
-          currentUser={currentUser}
-          token={token}
-          onNavigate={handleNavigate}
-        />
-      ) : activeNav === 'reports' || activeNav === 'conversations' ? (
-        <DealAnalysisReportsPage
-          currentUser={currentUser}
-          token={token}
-          onNavigate={handleNavigate}
-          defaultTab={activeNav === 'conversations' ? 'conversations' : 'overview'}
-        />
-      ) : activeNav === 'pdf-reports' ? (
-        <PdfReportsPage
+      ) : activeNav === 'conversations' ? (
+        <Box sx={{ p: { xs: 1, sm: 2 } }}>
+          <ConversationList
+            currentUser={currentUser}
+            token={token}
+          />
+        </Box>
+      ) : activeNav === 'reports' ? (
+        <DailyReportsPage
           currentUser={currentUser}
           token={token}
           onNavigate={handleNavigate}
