@@ -270,7 +270,7 @@ export default function NotificationSettingsPage({ token, currentUser }) {
             <Chip
               size="small"
               icon={<AlertIcon sx={{ fontSize: '14px !important', color: '#16A34A !important' }} />}
-              label="Module 8 Active"
+              label="Alert Engine Active"
               sx={{ bgcolor: '#F0FDF4', color: '#15803D', borderColor: '#BBF7D0', borderWidth: 1, borderStyle: 'solid', fontWeight: 600 }}
             />
           </Stack>

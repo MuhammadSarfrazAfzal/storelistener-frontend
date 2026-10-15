@@ -272,7 +272,7 @@ export function downloadStoreOverviewReport({
   let y = drawReportHeader(doc, {
     title: 'Store Overview & Retail Network Report',
     subtitle: 'Comprehensive audit of connected retail locations, counter desktop connection states, and live conversation flow.',
-    category: 'Module 1 • Executive Overview',
+    category: 'Executive Retail Overview',
     storeName: filters.store || 'All Retail Branches (3)',
     period: filters.period || 'Current Real-Time State',
     currentUser,
@@ -323,9 +323,7 @@ export function downloadStoreOverviewReport({
     startY: y,
     head: [['Store Code', 'Branch Name', 'Location / Counter', 'Status', 'Active Sessions', 'Last Heartbeat']],
     body: storeRows.length > 0 ? storeRows : [
-      ['STORE-01', 'Apple Authorized - 5th Ave', 'Manhattan, New York', 'Online', '1 active', 'Active'],
-      ['STORE-02', 'iStore Premium - Beverly Hills', 'Los Angeles, California', 'Online', '0 active', 'Active'],
-      ['STORE-03', 'Apple Hub - Brickell', 'Miami, Florida', 'Online', '0 active', 'Active'],
+      ['-', 'No stores configured', '-', 'Offline', '0 active', 'Awaiting connection'],
     ],
     theme: 'grid',
     styles: { fontSize: 7.5, cellPadding: 3, textColor: COLORS.slateText, lineColor: COLORS.slateBorder, lineWidth: 0.2 },
@@ -391,7 +389,7 @@ export function downloadDealAnalysisReport({
   let y = drawReportHeader(doc, {
     title: 'Deal Analysis & Conversion Audit Report',
     subtitle: 'AI-evaluated sales outcomes, customer buying intent classification, and conversation closure analytics.',
-    category: 'Module 6 • Deal Intelligence',
+    category: 'Deal Intelligence & Conversions',
     storeName: filters.store || 'All Retail Branches',
     period: filters.dateRange ? `Period: ${filters.dateRange}` : 'All Recorded Sessions',
     currentUser,
@@ -534,7 +532,7 @@ export function downloadSalespersonPerformanceReport({
   let y = drawReportHeader(doc, {
     title: 'Salesperson Performance & Quality Scorecard Report',
     subtitle: '8-dimension sales rubric evaluation grounded in transcripts, conversion metrics, and coaching opportunities.',
-    category: 'Module 7 • Sales Quality Scorecards',
+    category: 'Sales Quality Scorecards',
     storeName: filters.store || 'All Retail Branches',
     period: filters.dateRange ? `Period: ${filters.dateRange}` : 'All Audited Conversations',
     currentUser,
@@ -675,7 +673,7 @@ export function downloadCustomerSalesIntelligenceReport({
   let y = drawReportHeader(doc, {
     title: 'Customer & Sales Intelligence Report',
     subtitle: 'Extracted product demand rankings, customer objections, competitor mentions, and lost-sale dynamics.',
-    category: 'Module 9 • Strategic Sales Intelligence',
+    category: 'Strategic Sales Intelligence',
     storeName: filters.storeCode || filters.store || 'All Retail Branches',
     period: filters.dateRange ? `Period: ${filters.dateRange}` : 'All Audited Conversations',
     currentUser,
@@ -791,7 +789,7 @@ export function downloadLiveMonitoringReport({
   let y = drawReportHeader(doc, {
     title: 'Live Monitoring & Session Audit Report',
     subtitle: 'Real-time retail counter status, live microphone capture telemetry, and active conversation logs.',
-    category: 'Module 2 • Live Floor Monitoring',
+    category: 'Live Floor Monitoring',
     storeName: selectedStoreId === 'all' ? 'All Retail Branches' : selectedStoreId,
     period: 'Live Operational Snapshot',
     currentUser,
@@ -868,7 +866,7 @@ export function downloadNotificationsReport({
   let y = drawReportHeader(doc, {
     title: 'Smart Alerts & Notification Rules Audit',
     subtitle: 'System notification events, triggered threshold alerts, store isolation rules, and management escalation logs.',
-    category: 'Module 8 • Smart Alerts & Rules',
+    category: 'Smart Alerts & Rules',
     storeName: 'All Retail Branches',
     period: 'Recent Alert History',
     currentUser,
@@ -1420,7 +1418,7 @@ export function downloadDailyReportPDF({
       const transcriptLines = (conv.transcripts || []).map((t, tIdx) => {
         const time = t.timestamp ? new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : `#${tIdx + 1}`;
         const transTag = t.isTranslated ? ' [Translated]' : '';
-        return [time, `${t.speaker}${transTag}`, t.text || t.englishText || ''];
+        return [time, `${t.speaker}${transTag}`, t.englishText || t.text || ''];
       });
 
       if (transcriptLines.length > 0) {

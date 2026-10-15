@@ -60,7 +60,7 @@ const REPORT_CATALOGUE = [
   {
     id: 'store-overview',
     title: 'Store Overview & Retail Network Audit',
-    category: 'Module 1 • Real-Time Operations',
+    category: 'Real-Time Retail Operations',
     icon: StoreIcon,
     accentColor: '#111827',
     badgeColor: '#F1F5F9',
@@ -102,7 +102,7 @@ const REPORT_CATALOGUE = [
   {
     id: 'deal-analysis',
     title: 'Deal Analysis & Conversion Audit Report',
-    category: 'Module 6 • Deal Intelligence',
+    category: 'Deal Intelligence & Conversions',
     icon: AnalyticsIcon,
     accentColor: '#7C3AED',
     badgeColor: '#F5F3FF',
@@ -142,7 +142,7 @@ const REPORT_CATALOGUE = [
   {
     id: 'salesperson-performance',
     title: 'Salesperson Performance & Quality Scorecard Report',
-    category: 'Module 7 • Sales Quality Scorecards',
+    category: 'Sales Quality Scorecards',
     icon: PerformanceIcon,
     accentColor: '#2563EB',
     badgeColor: '#EFF6FF',
@@ -178,7 +178,7 @@ const REPORT_CATALOGUE = [
   {
     id: 'customer-intelligence',
     title: 'Customer & Sales Intelligence Report',
-    category: 'Module 9 • Strategic Sales Intelligence',
+    category: 'Strategic Sales Intelligence',
     icon: IntelligenceIcon,
     accentColor: '#059669',
     badgeColor: '#ECFDF5',
@@ -239,7 +239,7 @@ const REPORT_CATALOGUE = [
   {
     id: 'live-monitoring',
     title: 'Live Floor Monitoring & Audio Sessions Audit',
-    category: 'Module 2 • Live Floor Monitoring',
+    category: 'Live Floor Monitoring',
     icon: LiveIcon,
     accentColor: '#DC2626',
     badgeColor: '#FEF2F2',
@@ -277,7 +277,7 @@ const REPORT_CATALOGUE = [
   {
     id: 'alerts-audit',
     title: 'Smart Alerts & Notification Rules Audit',
-    category: 'Module 8 • Smart Alerts & Notifications',
+    category: 'Smart Alerts & Notifications',
     icon: AlertsIcon,
     accentColor: '#D97706',
     badgeColor: '#FFFBEB',

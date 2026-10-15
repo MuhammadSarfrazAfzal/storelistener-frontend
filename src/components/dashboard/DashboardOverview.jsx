@@ -28,10 +28,6 @@ import StatCard from './StatCard';
 import StoreCard from './StoreCard';
 import RecentConversationsTable from './RecentConversationsTable';
 import PendingManagersSection from './PendingManagersSection';
-import {
-  MOCK_KPIS,
-  MOCK_RECENT_CONVERSATIONS,
-} from '../../data/mockDashboardData';
 
 import { BACKEND_URL, DEFAULT_SOCKET_OPTIONS } from '../../config/api';
 
@@ -39,9 +35,14 @@ export default function DashboardOverview({ onNavigate, currentUser, token }) {
   const [toastMessage, setToastMessage] = useState(null);
   const [stores, setStores] = useState([]);
   const [recentConversations, setRecentConversations] = useState([]);
+  const [dealMetrics, setDealMetrics] = useState({
+    confirmedSales: 0,
+    followUpRequired: 0,
+    totalCompleted: 0,
+  });
   const [socketConnected, setSocketConnected] = useState(false);
 
-  // Fetch initial stores overview and recent sessions
+  // Fetch initial stores overview, deal metrics and recent sessions
   const fetchStoresOverview = async () => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/stores/overview`, { credentials: 'include' });
@@ -51,6 +52,22 @@ export default function DashboardOverview({ onNavigate, currentUser, token }) {
       }
     } catch (err) {
       console.warn('Stores overview fetch error:', err.message);
+    }
+  };
+
+  const fetchDealMetrics = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/reports/daily?filterType=today`, { credentials: 'include' });
+      const data = await res.json();
+      if (data.success && data.report?.metrics) {
+        setDealMetrics({
+          confirmedSales: data.report.metrics.wonCount || 0,
+          followUpRequired: data.report.metrics.pendingCount || 0,
+          totalCompleted: data.report.metrics.totalCompleted || 0,
+        });
+      }
+    } catch (err) {
+      console.warn('Deal metrics fetch error:', err.message);
     }
   };
 
@@ -68,21 +85,22 @@ export default function DashboardOverview({ onNavigate, currentUser, token }) {
           salesRep: s.salesRep || 'Sales Specialist',
           startedAt: new Date(s.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           duration: s.durationSeconds ? `${Math.floor(s.durationSeconds / 60)}m ${s.durationSeconds % 60}s` : 'Active',
-          dealStatus: s.analytics?.dealOutcome === 'Closed' ? 'Closed' : s.analytics?.dealOutcome === 'Not Closed' ? 'Not Closed' : 'Under Review',
-          topicsCount: s.analytics?.topics?.length || 1,
+          dealStatus: s.dealAnalysis?.conversationOutcome === 'Sale Confirmed' || s.analytics?.dealOutcome === 'Closed' ? 'Closed' : (s.dealAnalysis?.conversationOutcome === 'Not Converted' || s.analytics?.dealOutcome === 'Not Closed' ? 'Not Closed' : 'Under Review'),
+          topicsCount: s.dealAnalysis?.productsDiscussed?.length || 1,
         }));
         setRecentConversations(formatted);
       } else {
-        setRecentConversations(MOCK_RECENT_CONVERSATIONS);
+        setRecentConversations([]);
       }
     } catch (err) {
-      setRecentConversations(MOCK_RECENT_CONVERSATIONS);
+      setRecentConversations([]);
     }
   };
 
   useEffect(() => {
     fetchStoresOverview();
     fetchRecentSessions();
+    fetchDealMetrics();
 
     const authToken = token || localStorage.getItem('storelistener_token');
     const socket = io(BACKEND_URL, {
@@ -163,8 +181,22 @@ export default function DashboardOverview({ onNavigate, currentUser, token }) {
       iconName: 'Storefront',
       category: 'accent',
     },
-    MOCK_KPIS[2],
-    MOCK_KPIS[3],
+    {
+      id: 'deals-confirmed',
+      label: 'Deals Closed Today',
+      value: String(dealMetrics.confirmedSales ?? 0),
+      supportingText: 'Verified purchases from live sessions',
+      iconName: 'CheckCircle',
+      category: 'success',
+    },
+    {
+      id: 'deals-pending',
+      label: 'Follow-ups / Pending',
+      value: String(dealMetrics.followUpRequired ?? 0),
+      supportingText: 'Sessions requiring follow-up quote',
+      iconName: 'HourglassEmpty',
+      category: 'warning',
+    },
   ];
 
   const handleDownloadPdf = () => {
@@ -251,7 +283,7 @@ export default function DashboardOverview({ onNavigate, currentUser, token }) {
         </Stack>
       </Stack>
 
-      {/* Module 5 Live Synchronization Notice */}
+      {/* Real-Time Live Synchronization Notice */}
       <Alert
         severity="success"
         icon={<LiveIcon fontSize="small" />}
@@ -263,7 +295,7 @@ export default function DashboardOverview({ onNavigate, currentUser, token }) {
           fontSize: '0.8125rem',
         }}
       >
-        <strong>Module 5 Real-Time Owner Synchronization: </strong>
+        <strong>Real-Time Store Synchronization: </strong>
         Connected directly to Express & MongoDB backend. Store statuses, desktop heartbeats, and conversation recordings synchronize live.
       </Alert>
 

@@ -187,7 +187,7 @@ export default function DashboardSidebar({
           </Typography>
         </Stack>
         <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.6875rem', display: 'block', mt: 0.5 }}>
-          Module 2 — Live Monitoring Workspace
+          Real-Time Store Intelligence
         </Typography>
       </Box>
     </Box>

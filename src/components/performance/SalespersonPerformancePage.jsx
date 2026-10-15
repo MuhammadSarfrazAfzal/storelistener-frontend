@@ -273,7 +273,7 @@ export default function SalespersonPerformancePage({ currentUser, token, onNavig
             <Chip
               size="small"
               icon={<RubricIcon sx={{ fontSize: '14px !important', color: '#1E40AF !important' }} />}
-              label="Module 7 Rubric"
+              label="Evaluation Rubric"
               sx={{
                 bgcolor: '#EFF6FF',
                 color: '#1E40AF',
@@ -1178,7 +1178,7 @@ export default function SalespersonPerformancePage({ currentUser, token, onNavig
       >
         <DialogTitle>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Module 7 — Transparent Scoring Rubric
+            Transparent Scoring Rubric
           </Typography>
         </DialogTitle>
         <Divider />

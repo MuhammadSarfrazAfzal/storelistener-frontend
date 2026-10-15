@@ -18,7 +18,6 @@ import {
 import {
   Menu as MenuIcon,
   VerifiedUserOutlined as OwnerBadgeIcon,
-  DataObjectOutlined as MockIcon,
   LogoutOutlined as LogoutIcon,
 } from '@mui/icons-material';
 import NotificationCenter from '../notifications/NotificationCenter';
@@ -81,25 +80,6 @@ export default function DashboardTopbar({
 
         {/* Right: Workspace Badge, Mock Data Indicator, Notifications & Owner Identity */}
         <Stack direction="row" alignItems="center" spacing={{ xs: 1, sm: 1.5 }}>
-          {/* Mock Data Indicator */}
-          <Tooltip title="Displaying isolated demonstration metrics for UI verification. Backend API integration occurs in subsequent modules.">
-            <Chip
-              icon={<MockIcon sx={{ fontSize: '14px !important', color: '#B45309 !important' }} />}
-              label="Mock Data"
-              size="small"
-              sx={{
-                height: 24,
-                fontSize: '0.6875rem',
-                fontWeight: 600,
-                bgcolor: '#FFFBEB',
-                color: '#B45309',
-                borderColor: '#FDE68A',
-                borderWidth: 1,
-                borderStyle: 'solid',
-                display: { xs: 'none', sm: 'inline-flex' },
-              }}
-            />
-          </Tooltip>
 
           {/* Owner Workspace Badge */}
           <Chip

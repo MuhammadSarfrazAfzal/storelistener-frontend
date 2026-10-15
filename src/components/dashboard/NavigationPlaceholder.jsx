@@ -16,31 +16,26 @@ import {
 const PLACEHOLDER_INFO = {
   'live-monitoring': {
     title: 'Live Monitoring',
-    module: 'Module 2',
     icon: LiveMonitoringIcon,
-    description: 'Real-time multi-counter audio radar and speech activity monitoring across retail stores. Scheduled for implementation in Module 2.',
+    description: 'Real-time multi-counter audio radar and speech activity monitoring across retail stores.',
   },
   conversations: {
     title: 'Conversation History & Audits',
-    module: 'Module 3',
     icon: ConversationsIcon,
-    description: 'Archived conversation directory with searchable transcripts, audio recordings, and deal analytics. Scheduled for implementation in Module 3.',
+    description: 'Archived conversation directory with searchable transcripts, audio recordings, and deal analytics.',
   },
   stores: {
     title: 'Retail Store Management',
-    module: 'Module 4',
     icon: StoresIcon,
     description: 'Store configurations, counter workstation assignments, and manager authorization settings.',
   },
   reports: {
     title: 'Sales & Conversion Reports',
-    module: 'Module 5',
     icon: ReportsIcon,
     description: 'Executive cross-store conversion analytics, objection breakdown, and rep performance summaries.',
   },
   settings: {
     title: 'Platform Settings',
-    module: 'Module 6',
     icon: SettingsIcon,
     description: 'System preferences, speech recognition models, and notification configurations.',
   },
@@ -48,10 +43,9 @@ const PLACEHOLDER_INFO = {
 
 export default function NavigationPlaceholder({ sectionId, onBackToDashboard }) {
   const info = PLACEHOLDER_INFO[sectionId] || {
-    title: 'Section Under Development',
-    module: 'Upcoming Module',
+    title: 'Section Unavailable',
     icon: SettingsIcon,
-    description: 'This area is reserved for subsequent implementation modules.',
+    description: 'This area is currently unavailable or under scheduled maintenance.',
   };
 
   const IconComponent = info.icon;
@@ -76,24 +70,8 @@ export default function NavigationPlaceholder({ sectionId, onBackToDashboard }) 
             <IconComponent sx={{ fontSize: 28 }} />
           </Box>
 
-          <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 0.5 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>
             {info.title}
-          </Typography>
-
-          <Typography
-            variant="caption"
-            sx={{
-              display: 'inline-block',
-              bgcolor: '#EFF6FF',
-              color: 'secondary.main',
-              fontWeight: 600,
-              px: 1.5,
-              py: 0.25,
-              borderRadius: 1,
-              mb: 2,
-            }}
-          >
-            {info.module} Scope
           </Typography>
 
           <Typography
