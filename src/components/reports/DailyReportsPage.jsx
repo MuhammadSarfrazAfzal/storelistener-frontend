@@ -109,6 +109,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
 
   // Audio playback state
   const [playingSessionId, setPlayingSessionId] = useState(null);
+  const [loadingAudioSessionId, setLoadingAudioSessionId] = useState(null);
   const audioPlayerRef = useRef(null);
 
   // Transcript view modal state
@@ -169,7 +170,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
    * Handle Audio playback for a conversation
    */
   const handleToggleAudio = (session) => {
-    if (!session.audioUrl && !session.audioFileName) return;
+    if (!session.hasAudio && !session.audioUrl && !session.audioFileName) return;
 
     if (playingSessionId === session.sessionId) {
       // Pause
@@ -177,31 +178,46 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
         audioPlayerRef.current.pause();
       }
       setPlayingSessionId(null);
+      setLoadingAudioSessionId(null);
     } else {
       // Play
-      const rawUrl = session.audioUrl || `/uploads/${session.audioFileName}`;
+      const rawUrl = session.audioUrl || (session.audioFileName ? `/uploads/${session.audioFileName}` : `/api/sessions/${session.sessionId}/audio`);
       const fullUrl = rawUrl.startsWith('http') ? rawUrl : `${BACKEND_URL}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
 
       if (audioPlayerRef.current) {
         audioPlayerRef.current.pause();
       }
 
-      const audio = new Audio(fullUrl);
+      setLoadingAudioSessionId(session.sessionId);
+      const audio = new Audio();
       audioPlayerRef.current = audio;
-      setPlayingSessionId(session.sessionId);
 
-      audio.play().catch((playErr) => {
-        console.warn('[Audio Playback] Error playing audio:', playErr);
-        setPlayingSessionId(null);
-      });
+      audio.oncanplay = () => {
+        setLoadingAudioSessionId(null);
+      };
+
+      audio.onplay = () => {
+        setLoadingAudioSessionId(null);
+        setPlayingSessionId(session.sessionId);
+      };
 
       audio.onended = () => {
         setPlayingSessionId(null);
+        setLoadingAudioSessionId(null);
       };
+
       audio.onerror = () => {
-        console.warn('[Audio Playback] Audio element reported error');
+        console.warn('[Audio Playback] Audio element reported error for URL:', fullUrl);
         setPlayingSessionId(null);
+        setLoadingAudioSessionId(null);
       };
+
+      audio.src = fullUrl;
+      audio.play().catch((playErr) => {
+        console.warn('[Audio Playback] Error playing audio:', playErr);
+        setPlayingSessionId(null);
+        setLoadingAudioSessionId(null);
+      });
     }
   };
 
@@ -783,7 +799,8 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                   <TableBody>
                     {conversations.map((c, index) => {
                       const isPlaying = playingSessionId === c.sessionId;
-                      const hasAudio = Boolean(c.audioUrl || c.audioFileName);
+                      const isLoading = loadingAudioSessionId === c.sessionId;
+                      const hasAudio = Boolean(c.hasAudio || c.audioUrl || c.audioFileName);
                       const timeStr = c.startedAt ? new Date(c.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'N/A';
 
                       return (
@@ -794,11 +811,11 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                           <TableCell>
                             <Stack direction="row" spacing={1.5} alignItems="center">
                               {/* Audio Playback Button */}
-                              <Tooltip title={hasAudio ? (isPlaying ? 'Pause Recording' : 'Listen to Recording') : 'Recording unavailable'}>
+                              <Tooltip title={hasAudio ? (isLoading ? 'Loading recording...' : isPlaying ? 'Pause recording' : 'Listen to recording') : 'Recording unavailable for this conversation'}>
                                 <span>
                                   <IconButton
                                     size="small"
-                                    disabled={!hasAudio}
+                                    disabled={!hasAudio || isLoading}
                                     onClick={() => handleToggleAudio(c)}
                                     sx={{
                                       bgcolor: isPlaying ? '#2563EB' : hasAudio ? '#EFF6FF' : '#F1F5F9',
@@ -808,7 +825,13 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                                       },
                                     }}
                                   >
-                                    {isPlaying ? <PauseIcon sx={{ fontSize: 18 }} /> : <PlayIcon sx={{ fontSize: 18 }} />}
+                                    {isLoading ? (
+                                      <CircularProgress size={16} sx={{ color: '#2563EB' }} />
+                                    ) : isPlaying ? (
+                                      <PauseIcon sx={{ fontSize: 18 }} />
+                                    ) : (
+                                      <PlayIcon sx={{ fontSize: 18 }} />
+                                    )}
                                   </IconButton>
                                 </span>
                               </Tooltip>
