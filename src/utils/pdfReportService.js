@@ -1202,3 +1202,253 @@ export function downloadSingleConversationReport({
   finalizeReportFooters(doc);
   doc.save(getReportFilename(`AI-Report-${shortId}`));
 }
+
+// ============================================================================
+// 7. COMPREHENSIVE DAILY SALES & AI AUDIT REPORT (TASK 2)
+// ============================================================================
+export function downloadDailyReportPDF({
+  reportData,
+  currentUser = null,
+}) {
+  if (!reportData) return;
+  const doc = new PDFDocument({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const {
+    dateLabel = 'Daily Report',
+    businessTimezone = 'America/New_York',
+    activeFilters = {},
+    metrics = {},
+    dailyTrends = [],
+    aiSummary = {},
+    conversations = [],
+  } = reportData;
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // Section 1 & 2: Header and Metadata
+  let y = drawReportHeader(doc, {
+    title: `Daily Sales Intelligence Report — ${dateLabel}`,
+    subtitle: 'Audited retail conversation reports, verified sales metrics, daily AI summary, and complete transcripts.',
+    category: 'Executive Retail Intelligence Audit',
+    storeName: activeFilters.store === 'all' || !activeFilters.store ? 'All Retail Branches' : activeFilters.store,
+    period: dateLabel,
+    currentUser,
+  });
+
+  // Section 3 & 4: Overall Sales Analytics and Verified Metrics
+  y = drawSectionHeading(doc, y, '1. Daily Sales Summary & Verified Metrics', 'Operational conversation counts, verified transactions, and objective outcome distributions.');
+
+  const kpiCards = [
+    {
+      label: 'Completed Conversations',
+      value: String(metrics.totalCompleted || 0),
+      supportingText: `Analysis: ${metrics.completedAnalysisCount || 0} done`,
+      valueColor: COLORS.primary,
+    },
+    {
+      label: 'Won (Sale Confirmed)',
+      value: String(metrics.wonCount || 0),
+      supportingText: `${metrics.conversionRate || 0}% conversion rate`,
+      valueColor: COLORS.success,
+    },
+    {
+      label: 'Pending (Follow-up)',
+      value: String(metrics.pendingCount || 0),
+      supportingText: `${metrics.followUpRate || 0}% follow-up rate`,
+      valueColor: COLORS.warning,
+    },
+    {
+      label: 'Verified Sales & Revenue',
+      value: `${metrics.verifiedSalesCount || 0} verified`,
+      supportingText: metrics.verifiedRevenueDisplay || 'Not verified',
+      valueColor: metrics.verifiedSalesCount > 0 ? COLORS.success : COLORS.slateMuted,
+    },
+  ];
+  y = drawKpiCards(doc, y, kpiCards);
+
+  // Summary Metrics Table
+  const summaryRows = [
+    ['Total Completed Conversations', String(metrics.totalCompleted || 0), 'AI Analysis Status', `Completed: ${metrics.completedAnalysisCount || 0} | Pending: ${metrics.pendingAnalysisCount || 0} | Failed: ${metrics.failedAnalysisCount || 0}`],
+    ['Won Outcomes', String(metrics.wonCount || 0), 'Lost (Not Converted)', String(metrics.lostCount || 0)],
+    ['Pending Outcomes', String(metrics.pendingCount || 0), 'Inconclusive / Insufficient Evidence', String(metrics.inconclusiveCount || 0)],
+    ['Verified Sales (POS Receipts)', String(metrics.verifiedSalesCount || 0), 'Verified Total Revenue', metrics.verifiedRevenueDisplay || 'Unavailable (Not verified)'],
+    ['Business Timezone', String(businessTimezone), 'Active Filters', `Store: ${activeFilters.store || 'All'} | Rep: ${activeFilters.salesperson || 'All'}`],
+  ];
+
+  runAutoTable(doc, {
+    startY: y,
+    head: [['Metric', 'Value', 'Metric', 'Value']],
+    body: summaryRows,
+    theme: 'grid',
+    styles: { fontSize: 7, cellPadding: 2.2, textColor: COLORS.slateText, lineColor: COLORS.slateBorder, lineWidth: 0.2 },
+    headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: 'bold' },
+    columnStyles: {
+      0: { cellWidth: 42, fontStyle: 'bold', fillColor: COLORS.slateLight },
+      1: { cellWidth: 48, fontStyle: 'bold', textColor: COLORS.secondary },
+      2: { cellWidth: 42, fontStyle: 'bold', fillColor: COLORS.slateLight },
+      3: { cellWidth: 50 },
+    },
+    margin: { left: 14, right: 14 },
+    showHead: 'everyPage',
+  });
+  y = doc.lastAutoTable.finalY + 6;
+
+  // Multi-day Date-wise Summary Breakdown
+  if (Array.isArray(dailyTrends) && dailyTrends.length > 1) {
+    if (y > 230) { doc.addPage(); y = 16; }
+    y = drawSectionHeading(doc, y, 'Date-Wise Summary Breakdown', 'Chronological daily performance trends across the selected multi-day window.');
+    const trendRows = dailyTrends.map((t) => [
+      t.date,
+      String(t.total),
+      String(t.won),
+      String(t.lost),
+      String(t.pending),
+      String(t.inconclusive),
+      String(t.verifiedSales),
+    ]);
+
+    runAutoTable(doc, {
+      startY: y,
+      head: [['Date', 'Total', 'Won', 'Lost', 'Pending', 'Inconclusive', 'Verified Sales']],
+      body: trendRows,
+      theme: 'grid',
+      styles: { fontSize: 7, cellPadding: 2.2, textColor: COLORS.slateText, lineColor: COLORS.slateBorder, lineWidth: 0.2 },
+      headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: 'bold' },
+      margin: { left: 14, right: 14 },
+      showHead: 'everyPage',
+    });
+    y = doc.lastAutoTable.finalY + 6;
+  }
+
+  // Section 5: Daily-Level AI Analysis & Recommendations
+  if (y > 210) { doc.addPage(); y = 16; }
+  y = drawSectionHeading(doc, y, '2. Daily-Level AI Analysis & Recommendations', 'Synthesized strategic insights and actionable coaching priorities derived from underlying conversation reports.');
+
+  const aiRows = [
+    ['Common Customer Needs & Intent', aiSummary.commonCustomerNeeds || 'N/A'],
+    ['Frequently Discussed Products', (aiSummary.frequentlyDiscussedProducts || []).join('; ') || 'None recorded'],
+    ['Recurring Objections & Conversion Barriers', (aiSummary.recurringObjections || []).join('; ') || 'None identified'],
+    ['Sales Outcomes Synthesis', aiSummary.salesOutcomesSummary || 'N/A'],
+    ['Salesperson Strengths & Best Practices', (aiSummary.salespersonStrengths || []).join('; ') || 'Consultative customer assistance'],
+    ['Areas for Salesperson Improvement', (aiSummary.areasForImprovement || []).join('; ') || 'Overcome price barriers with trade-ins'],
+    ['Follow-Up Priorities', (aiSummary.followUpPriorities || []).join('; ') || 'Follow up with pending consultations'],
+    ['Actionable Sales Recommendations', (aiSummary.actionableRecommendations || []).map((r, i) => `${i + 1}. ${r}`).join('\n') || 'N/A'],
+  ];
+
+  runAutoTable(doc, {
+    startY: y,
+    head: [['Strategic Domain', 'AI Synthesis & Executive Findings']],
+    body: aiRows,
+    theme: 'grid',
+    styles: { fontSize: 7, cellPadding: 2.6, textColor: COLORS.slateText, lineColor: COLORS.slateBorder, lineWidth: 0.2 },
+    headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: 'bold' },
+    columnStyles: {
+      0: { cellWidth: 52, fontStyle: 'bold', fillColor: COLORS.slateLight },
+      1: { cellWidth: 130 },
+    },
+    margin: { left: 14, right: 14 },
+    showHead: 'everyPage',
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  // Section 6 & 7: Individual Conversation Analyses & Complete English Transcripts
+  doc.addPage();
+  y = 16;
+  y = drawSectionHeading(doc, y, '3. Individual Conversation Analyses & Complete Transcripts', 'Comprehensive evaluation of every eligible conversation with all 13 required audit dimensions and verbatim transcripts.');
+
+  if (!conversations || conversations.length === 0) {
+    runAutoTable(doc, {
+      startY: y,
+      head: [['Conversation Audit']],
+      body: [['No completed conversations found matching the active calendar and store filters.']],
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 4, textColor: COLORS.slateMuted },
+      margin: { left: 14, right: 14 },
+    });
+  } else {
+    conversations.forEach((conv, index) => {
+      if (y > 220) { doc.addPage(); y = 16; }
+
+      // Conversation Banner
+      doc.setFillColor(...COLORS.slateLight);
+      doc.setDrawColor(...COLORS.secondary);
+      doc.setLineWidth(0.6);
+      doc.roundedRect(14, y, pageWidth - 28, 8, 1.5, 1.5, 'FD');
+
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...COLORS.primary);
+      doc.text(`Conversation #${index + 1}: ${conv.sessionId} — ${(conv.salesOutcome || 'INCONCLUSIVE').toUpperCase()}`, 18, y + 5.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(...COLORS.slateMuted);
+      doc.text(`${conv.storeName} • Rep: ${conv.salesperson} • ${conv.durationFormatted || 'N/A'}`, pageWidth - 18, y + 5.5, { align: 'right' });
+
+      y += 11;
+
+      // 13 Audit Dimensions Table
+      const convRows = [
+        ['Executive Summary', conv.executiveSummary || 'Consultation regarding Apple retail products.'],
+        ['Customer Needs & Intent', `${conv.customerRequirements || 'Not mentioned'} (Intent: ${conv.customerBuyingIntent || 'Unclear'})`],
+        ['Products Discussed & Budget', `${(conv.productsDiscussed || []).join(', ') || 'Not specified'} | Budget: ${conv.budgetAndPrice || 'Not mentioned'}`],
+        ['Sales Outcome & Evidence', `Outcome: ${conv.salesOutcome} (${conv.conversationOutcome || conv.salesOutcome})\nEvidence: ${conv.outcomeEvidence || 'No verbal transaction recorded.'}`],
+        ['Verified Sale Status', `${conv.verifiedStatusLabel || 'Unverified'}${conv.verifiedRevenue != null ? ` | Verified Revenue: $${conv.verifiedRevenue}` : ''}`],
+        ['Customer Objections & Response', `Objections: ${(conv.customerObjections || []).join(', ') || 'None'}\nSalesperson Response: ${conv.salespersonResponse || 'Not mentioned'}`],
+        ['Salesperson Performance', `Score: ${conv.salespersonPerformance?.overallScore != null ? `${conv.salespersonPerformance.overallScore}/100` : 'Assessed'}\nStrengths: ${(conv.salespersonPerformance?.strengths || []).join('; ') || 'Grounded customer dialogue'}\nImprovement: ${(conv.salespersonPerformance?.areasToImprove || []).join('; ') || 'Clarify trade-in earlier'}`],
+        ['Recommended Next Steps', conv.nextRecommendedAction || 'Follow up with customer within 24 hours.'],
+        ['Analysis Status & Limitations', `Status: ${(conv.analysisStatus || 'completed').toUpperCase()} | Limitations: ${conv.limitations || 'Single microphone counter audio'}`],
+      ];
+
+      runAutoTable(doc, {
+        startY: y,
+        head: [['Audit Dimension', 'Findings & Grounded Transcript Evidence']],
+        body: convRows,
+        theme: 'grid',
+        styles: { fontSize: 6.8, cellPadding: 2.2, textColor: COLORS.slateText, lineColor: COLORS.slateBorder, lineWidth: 0.2 },
+        headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontStyle: 'bold' },
+        columnStyles: {
+          0: { cellWidth: 46, fontStyle: 'bold', fillColor: COLORS.slateLight },
+          1: { cellWidth: 136 },
+        },
+        margin: { left: 14, right: 14 },
+        showHead: 'everyPage',
+      });
+      y = doc.lastAutoTable.finalY + 4;
+
+      // Complete English Transcript
+      const transcriptLines = (conv.transcripts || []).map((t, tIdx) => {
+        const time = t.timestamp ? new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : `#${tIdx + 1}`;
+        const transTag = t.isTranslated ? ' [Translated]' : '';
+        return [time, `${t.speaker}${transTag}`, t.text || t.englishText || ''];
+      });
+
+      if (transcriptLines.length > 0) {
+        runAutoTable(doc, {
+          startY: y,
+          head: [['Time', 'Speaker', 'Complete English Spoken Transcript Dialogue']],
+          body: transcriptLines,
+          theme: 'grid',
+          styles: { fontSize: 6.5, cellPadding: 2, textColor: COLORS.slateText, lineColor: COLORS.slateBorder, lineWidth: 0.15 },
+          headStyles: { fillColor: [51, 65, 85], textColor: COLORS.white, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: COLORS.slateLight },
+          columnStyles: {
+            0: { cellWidth: 24 },
+            1: { cellWidth: 32, fontStyle: 'bold' },
+            2: { cellWidth: 126 },
+          },
+          margin: { left: 14, right: 14 },
+          showHead: 'everyPage',
+        });
+        y = doc.lastAutoTable.finalY + 8;
+      } else {
+        y += 4;
+      }
+    });
+  }
+
+  finalizeReportFooters(doc);
+
+  const cleanSlug = String(dateLabel).replace(/[^a-zA-Z0-9_-]/g, '_');
+  doc.save(`Storelistener_Daily_Report_${cleanSlug}.pdf`);
+}

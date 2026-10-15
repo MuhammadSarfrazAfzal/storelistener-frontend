@@ -314,8 +314,13 @@ export default function SessionDetailModal({ session, onClose }) {
                       )}
                     </Stack>
                     <Typography variant="body2" sx={{ color: '#1e293b', lineHeight: 1.5 }}>
-                      {t.text}
+                      {t.englishText || t.text}
                     </Typography>
+                    {t.isTranslated && t.originalText && (
+                      <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5, fontStyle: 'italic' }}>
+                        Original: "{t.originalText}"
+                      </Typography>
+                    )}
                   </Box>
                 ))
               )}

@@ -85,12 +85,12 @@ export function formatIntoParagraphs(segments = [], interimText = '', activeSpea
   let currentPara = null;
 
   const validSegments = Array.isArray(segments)
-    ? segments.filter((s) => s && (s.text || s.englishText) && String(s.text || s.englishText).trim().length > 0)
+    ? segments.filter((s) => s && (s.englishText || s.text) && String(s.englishText || s.text).trim().length > 0)
     : [];
 
   for (let i = 0; i < validSegments.length; i++) {
     const seg = validSegments[i];
-    const segText = String(seg.text || seg.englishText).trim();
+    const segText = String(seg.englishText || seg.text).trim();
     const speaker = normalizeSpeaker(seg.speaker);
     const segStart = typeof seg.startTime === 'number' ? seg.startTime : null;
     const segEnd = typeof seg.endTime === 'number' ? seg.endTime : null;
