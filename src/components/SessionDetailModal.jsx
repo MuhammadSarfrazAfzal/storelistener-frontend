@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -15,6 +15,9 @@ import {
   Paper,
   Alert,
   Divider,
+  Slider,
+  CircularProgress,
+  Tooltip,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -27,11 +30,60 @@ import {
   Lightbulb as LightbulbIcon,
   RecordVoiceOver as SpeakerIcon,
   Person as PersonIcon,
+  PlayArrow as PlayIcon,
+  Pause as PauseIcon,
+  Replay as ReplayIcon,
+  MicOff as MicOffIcon,
 } from '@mui/icons-material';
 import { BACKEND_URL } from '../config/api';
 
-export default function SessionDetailModal({ session, onClose }) {
-  if (!session) return null;
+function formatTime(seconds) {
+  if (isNaN(seconds) || seconds < 0) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
+
+export default function SessionDetailModal({ session: initialSession, onClose }) {
+  if (!initialSession) return null;
+
+  const [session, setSession] = useState(initialSession);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [audioError, setAudioError] = useState(null);
+  const audioRef = useRef(null);
+
+  // If session doesn't have audioUrl or audioFileName, attempt to fetch fresh details
+  useEffect(() => {
+    let isMounted = true;
+    setSession(initialSession);
+    setIsPlaying(false);
+    setIsLoading(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setAudioError(null);
+
+    if (initialSession.sessionId && !initialSession.audioUrl && !initialSession.audioFileName) {
+      fetch(`${BACKEND_URL}/api/sessions/${initialSession.sessionId}`, { credentials: 'include' })
+        .then((res) => res.json())
+        .then((data) => {
+          if (isMounted && data.success && data.session) {
+            setSession(data.session);
+          }
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      isMounted = false;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, [initialSession]);
 
   const {
     sessionId,
@@ -41,19 +93,107 @@ export default function SessionDetailModal({ session, onClose }) {
     startedAt,
     durationSeconds = 60,
     audioUrl,
+    audioFileName,
+    hasAudio: sessionHasAudio,
     transcripts = [],
     analytics = {},
   } = session;
 
-  const fullAudioUrl = audioUrl ? `${BACKEND_URL}${audioUrl}` : null;
+  // Resolve audio URL identical to Daily Reports
+  const rawAudio = audioUrl || (audioFileName ? `/uploads/${audioFileName}` : `/api/sessions/${sessionId}/audio`);
+  const hasAudio = Boolean(sessionHasAudio || audioUrl || audioFileName);
+  const fullAudioUrl = rawAudio.startsWith('http')
+    ? rawAudio
+    : `${BACKEND_URL}${rawAudio.startsWith('/') ? '' : '/'}${rawAudio}`;
+
+  // Audio event listeners
+  const handleTogglePlay = () => {
+    if (!hasAudio) return;
+
+    if (!audioRef.current) {
+      const audio = new Audio(fullAudioUrl);
+      audioRef.current = audio;
+
+      audio.onloadedmetadata = () => {
+        if (audio.duration && !isNaN(audio.duration)) {
+          setDuration(audio.duration);
+        }
+      };
+
+      audio.ontimeupdate = () => {
+        setCurrentTime(audio.currentTime);
+      };
+
+      audio.oncanplay = () => {
+        setIsLoading(false);
+      };
+
+      audio.onplay = () => {
+        setIsPlaying(true);
+        setIsLoading(false);
+        setAudioError(null);
+      };
+
+      audio.onpause = () => {
+        setIsPlaying(false);
+      };
+
+      audio.onended = () => {
+        setIsPlaying(false);
+        setCurrentTime(0);
+      };
+
+      audio.onerror = () => {
+        setIsLoading(false);
+        setIsPlaying(false);
+        setAudioError('Unable to play recording. The audio file may be unavailable or inaccessible.');
+      };
+    }
+
+    const audio = audioRef.current;
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      setIsLoading(true);
+      setAudioError(null);
+      audio.play().catch((err) => {
+        console.warn('[SessionDetailModal] Play error:', err);
+        setIsLoading(false);
+        setIsPlaying(false);
+        setAudioError('Playback failed. Please check your network connection or permissions.');
+      });
+    }
+  };
+
+  const handleSeek = (e, newValue) => {
+    setCurrentTime(newValue);
+    if (audioRef.current) {
+      audioRef.current.currentTime = newValue;
+    }
+  };
+
+  const handleReplay = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      setCurrentTime(0);
+      if (!isPlaying) {
+        audioRef.current.play().catch(() => {});
+      }
+    }
+  };
 
   const isWon = analytics.dealOutcome === 'won';
   const isLost = analytics.dealOutcome === 'lost';
 
   return (
     <Dialog
-      open={Boolean(session)}
-      onClose={onClose}
+      open={Boolean(initialSession)}
+      onClose={() => {
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+        onClose();
+      }}
       maxWidth="md"
       fullWidth
       PaperProps={{
@@ -95,46 +235,198 @@ export default function SessionDetailModal({ session, onClose }) {
 
       <DialogContent sx={{ p: 3 }}>
         <Stack spacing={2.5}>
-          {/* Audio Player Card */}
+          {/* Audio Player Card (Screenshot Match) */}
           <Paper
             variant="outlined"
             sx={{
-              p: 2,
+              p: 2.5,
               borderRadius: 2.5,
               bgcolor: '#ecfdf5',
               borderColor: '#a7f3d0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 2,
             }}
           >
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <Avatar sx={{ bgcolor: '#059669', color: '#ffffff', width: 42, height: 42 }}>
-                <VolumeUpIcon />
-              </Avatar>
-              <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#065f46' }}>
-                  In-Store Voice Audio Recording
-                </Typography>
-                <Typography variant="caption" sx={{ color: '#047857' }}>
-                  {fullAudioUrl
-                    ? 'Audio synchronized from retail terminal. Press play to listen.'
-                    : 'Voice session synchronized and logged into intelligence audit.'}
-                </Typography>
-              </Box>
-            </Stack>
+            {/* Top Heading Row */}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 2,
+                mb: 2,
+              }}
+            >
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <Avatar sx={{ bgcolor: '#059669', color: '#ffffff', width: 42, height: 42 }}>
+                  <VolumeUpIcon />
+                </Avatar>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#065f46' }}>
+                    In-Store Voice Audio Recording
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#047857' }}>
+                    {hasAudio
+                      ? 'Voice session synchronized and logged into intelligence audit.'
+                      : 'Voice session synchronized and logged into intelligence audit.'}
+                  </Typography>
+                </Box>
+              </Stack>
 
-            {fullAudioUrl ? (
-              <Box component="audio" controls src={fullAudioUrl} sx={{ height: 36, maxWidth: 360 }} />
+              {hasAudio ? (
+                <Chip
+                  icon={<CheckCircleIcon sx={{ color: '#059669 !important' }} />}
+                  label="Audio Stream Synchronized"
+                  size="small"
+                  sx={{ bgcolor: '#ffffff', color: '#047857', fontWeight: 700, border: '1px solid #a7f3d0' }}
+                />
+              ) : (
+                <Chip
+                  icon={<MicOffIcon sx={{ color: '#b45309 !important' }} />}
+                  label="Recording Unavailable"
+                  size="small"
+                  sx={{ bgcolor: '#ffffff', color: '#b45309', fontWeight: 700, border: '1px solid #fde68a' }}
+                />
+              )}
+            </Box>
+
+            {/* Functional Audio Player Component directly below heading */}
+            {hasAudio ? (
+              <Box
+                sx={{
+                  p: 1.5,
+                  bgcolor: '#ffffff',
+                  borderRadius: 2,
+                  border: '1px solid #a7f3d0',
+                  boxShadow: '0 2px 6px rgba(5,150,105,0.06)',
+                }}
+              >
+                <Stack direction="row" spacing={2} alignItems="center">
+                  {/* Play / Pause / Loading Button */}
+                  <Tooltip title={isPlaying ? 'Pause original recording' : 'Listen to recording'}>
+                    <span>
+                      <IconButton
+                        onClick={handleTogglePlay}
+                        disabled={isLoading}
+                        sx={{
+                          bgcolor: '#059669',
+                          color: '#ffffff',
+                          width: 42,
+                          height: 42,
+                          flexShrink: 0,
+                          '&:hover': {
+                            bgcolor: '#047857',
+                          },
+                          '&.Mui-disabled': {
+                            bgcolor: '#a7f3d0',
+                            color: '#ffffff',
+                          },
+                        }}
+                      >
+                        {isLoading ? (
+                          <CircularProgress size={20} sx={{ color: '#ffffff' }} />
+                        ) : isPlaying ? (
+                          <PauseIcon sx={{ fontSize: 22 }} />
+                        ) : (
+                          <PlayIcon sx={{ fontSize: 22 }} />
+                        )}
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+
+                  {/* Time indicator */}
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 700,
+                      color: '#065f46',
+                      minWidth: 78,
+                      fontFamily: 'monospace',
+                      fontSize: '0.8rem',
+                      userSelect: 'none',
+                    }}
+                  >
+                    {formatTime(currentTime)} / {formatTime(duration || durationSeconds || 0)}
+                  </Typography>
+
+                  {/* Scrubber / Progress Slider */}
+                  <Slider
+                    size="small"
+                    value={currentTime}
+                    min={0}
+                    max={duration > 0 ? duration : durationSeconds || 60}
+                    step={0.5}
+                    onChange={handleSeek}
+                    sx={{
+                      color: '#059669',
+                      height: 6,
+                      '& .MuiSlider-thumb': {
+                        width: 14,
+                        height: 14,
+                        bgcolor: '#059669',
+                        '&:hover, &.Mui-focusVisible': {
+                          boxShadow: '0 0 0 6px rgba(5, 150, 105, 0.16)',
+                        },
+                      },
+                      '& .MuiSlider-track': {
+                        bgcolor: '#059669',
+                      },
+                      '& .MuiSlider-rail': {
+                        bgcolor: '#d1fae5',
+                      },
+                    }}
+                  />
+
+                  {/* Replay action */}
+                  <Tooltip title="Restart to beginning">
+                    <IconButton size="small" onClick={handleReplay} sx={{ color: '#047857' }}>
+                      <ReplayIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+
+                  {/* Format pill */}
+                  <Chip
+                    label="Original WebM"
+                    size="small"
+                    sx={{
+                      bgcolor: '#ecfdf5',
+                      color: '#047857',
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      border: '1px solid #a7f3d0',
+                      display: { xs: 'none', sm: 'inline-flex' },
+                    }}
+                  />
+                </Stack>
+              </Box>
             ) : (
-              <Chip
-                icon={<CheckCircleIcon sx={{ color: '#059669 !important' }} />}
-                label="Audio Stream Synchronized"
-                size="small"
-                sx={{ bgcolor: '#ffffff', color: '#047857', fontWeight: 700, border: '1px solid #a7f3d0' }}
-              />
+              <Box
+                sx={{
+                  p: 1.5,
+                  bgcolor: '#ffffff',
+                  borderRadius: 2,
+                  border: '1px dashed #cbd5e1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                }}
+              >
+                <MicOffIcon sx={{ color: '#94a3b8', fontSize: 20 }} />
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: '#475569', fontSize: '0.85rem' }}>
+                    Recording unavailable for this conversation
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#64748b' }}>
+                    No counter audio recording was archived or linked to this interaction.
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+
+            {/* Playback Error Alert */}
+            {audioError && (
+              <Alert severity="error" sx={{ mt: 1.5, py: 0.5, borderRadius: 1.5 }}>
+                {audioError}
+              </Alert>
             )}
           </Paper>
 
