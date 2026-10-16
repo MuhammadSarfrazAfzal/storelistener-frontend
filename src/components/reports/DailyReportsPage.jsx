@@ -134,14 +134,20 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
     setHasSearched(true);
 
     try {
+      const authToken = token || localStorage.getItem('storelistener_token') || localStorage.getItem('token');
+      const storeScope = currentUser?.storeCode || 'all';
       const params = new URLSearchParams({
         filterType: 'single',
         date: selectedDate,
+        ...(storeScope !== 'all' ? { store: storeScope } : {}),
       });
 
       const res = await fetch(`${BACKEND_URL}/api/reports/daily?${params.toString()}`, {
         credentials: 'include',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
       });
 
       if (!res.ok) {
@@ -187,16 +193,20 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
     setHasSearched(true);
 
     try {
+      const authToken = token || localStorage.getItem('storelistener_token') || localStorage.getItem('token');
+      const storeScope = currentUser?.storeCode || 'all';
+
       const res = await fetch(`${BACKEND_URL}/api/reports/daily/analyze`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
         body: JSON.stringify({
           date: selectedDate,
           filterType: 'single',
+          store: storeScope,
           refresh: true,
         }),
       });
@@ -281,7 +291,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
   /**
    * Export PDF for the currently generated report
    */
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     if (!reportData) return;
     try {
       downloadDailyReportPDF({
@@ -289,7 +299,32 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
         currentUser,
       });
     } catch (err) {
-      console.error('[DailyReportsPage] PDF download error:', err);
+      console.warn('[DailyReportsPage] Client-side PDF generation note, falling back to server export:', err);
+      try {
+        const authToken = token || localStorage.getItem('storelistener_token') || localStorage.getItem('token');
+        const storeScope = currentUser?.storeCode || reportData?.activeFilters?.store || 'all';
+        const params = new URLSearchParams({
+          date: selectedDate,
+          filterType: 'single',
+          store: storeScope,
+        });
+        const res = await fetch(`${BACKEND_URL}/api/reports/daily/pdf?${params.toString()}`, {
+          credentials: 'include',
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        });
+        if (res.ok) {
+          const blob = await res.blob();
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = downloadUrl;
+          a.download = `Storelistener_Daily_Report_${selectedDate}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        }
+      } catch (srvErr) {
+        console.error('[DailyReportsPage] PDF download error:', srvErr);
+      }
     }
   };
 
@@ -1153,6 +1188,8 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                 })}
               </Stack>
             </Box>
+          )}
+
           {/* F. Data Governance, Boundaries & Audit Limitations */}
           <Card sx={{ p: 3, borderRadius: 2.5, border: '1px solid #E2E8F0', bgcolor: '#F8FAFC' }}>
             <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
