@@ -101,11 +101,15 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
   const todayStr = formatLocalDate(new Date());
   const [selectedDate, setSelectedDate] = useState(todayStr);
 
-  // Analysis report state (initially null for clean/blank state)
+  // Analysis report state
   const [reportData, setReportData] = useState(null);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
-  const [hasRunAnalysis, setHasRunAnalysis] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [noSavedReportFound, setNoSavedReportFound] = useState(false);
+  const [isStale, setIsStale] = useState(false);
+  const [freshnessNote, setFreshnessNote] = useState('');
 
   // Audio playback state
   const [playingSessionId, setPlayingSessionId] = useState(null);
@@ -116,20 +120,18 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
   const [transcriptModalOpen, setTranscriptModalOpen] = useState(false);
   const [activeTranscriptSession, setActiveTranscriptSession] = useState(null);
 
-  // Check if selected date is today (business day in progress)
-  const isSelectedDateToday = selectedDate === todayStr;
-
   /**
-   * Run AI Analysis for the selected date
+   * 1. View Report: Fetches existing saved report from MongoDB WITHOUT generating a new one
    */
-  const handleRunAiAnalysis = async (isRegenerate = false) => {
+  const handleViewReport = async () => {
     if (!selectedDate) {
       setErrorMessage('Please choose a valid calendar date.');
       return;
     }
 
-    setIsAnalyzing(true);
+    setIsLoadingReport(true);
     setErrorMessage(null);
+    setHasSearched(true);
 
     try {
       const params = new URLSearchParams({
@@ -137,13 +139,66 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
         date: selectedDate,
       });
 
-      if (isRegenerate) {
-        params.append('refresh', 'true');
-      }
-
       const res = await fetch(`${BACKEND_URL}/api/reports/daily?${params.toString()}`, {
         credentials: 'include',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server returned HTTP ${res.status}: Failed to fetch report.`);
+      }
+
+      const data = await res.json();
+      if (!data.success && data.error) {
+        throw new Error(data.error);
+      }
+
+      if (data.hasReport && data.report) {
+        setReportData(data.report);
+        setIsStale(Boolean(data.isStale));
+        setFreshnessNote(data.freshnessNote || '');
+        setNoSavedReportFound(false);
+      } else {
+        setReportData(null);
+        setIsStale(false);
+        setFreshnessNote('');
+        setNoSavedReportFound(true);
+      }
+    } catch (err) {
+      console.error('[DailyReportsPage] View report error:', err);
+      setErrorMessage(err.message || 'Failed to fetch saved report.');
+    } finally {
+      setIsLoadingReport(false);
+    }
+  };
+
+  /**
+   * 2. AI Analysis / Update Analysis: Fetches latest authoritative records, recalculates metrics,
+   * runs grounded AI synthesis, and persists/updates the single report document in MongoDB.
+   */
+  const handleRunAiAnalysis = async () => {
+    if (!selectedDate) {
+      setErrorMessage('Please choose a valid calendar date.');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setErrorMessage(null);
+    setHasSearched(true);
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/reports/daily/analyze`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          date: selectedDate,
+          filterType: 'single',
+          refresh: true,
+        }),
       });
 
       if (!res.ok) {
@@ -157,7 +212,9 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
 
       const report = data.report || data;
       setReportData(report);
-      setHasRunAnalysis(true);
+      setIsStale(false);
+      setFreshnessNote('Report is fully synchronized with store records.');
+      setNoSavedReportFound(false);
     } catch (err) {
       console.error('[DailyReportsPage] Analysis error:', err);
       setErrorMessage(err.message || 'Failed to complete AI analysis. Please check server connectivity.');
@@ -312,14 +369,19 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
           </Typography>
         </Box>
 
-        {/* Action Controls: Calendar Date Picker & AI Analysis Trigger */}
+        {/* Action Controls: Calendar Date Picker, View Report, AI/Update Analysis, Export PDF */}
         <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
           <TextField
             type="date"
             size="small"
             value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            disabled={isAnalyzing}
+            onChange={(e) => {
+              setSelectedDate(e.target.value);
+              setReportData(null);
+              setNoSavedReportFound(false);
+              setHasSearched(false);
+            }}
+            disabled={isAnalyzing || isLoadingReport}
             sx={{
               width: 170,
               bgcolor: 'background.paper',
@@ -331,12 +393,34 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
             }}
           />
 
+          {/* View Report Button: Inspect existing saved report without silent generation */}
+          <Button
+            variant="outlined"
+            disabled={isAnalyzing || isLoadingReport || !selectedDate}
+            onClick={handleViewReport}
+            startIcon={isLoadingReport ? <CircularProgress size={16} color="inherit" /> : <ViewIcon />}
+            sx={{
+              fontWeight: 600,
+              textTransform: 'none',
+              px: 2,
+              py: 1,
+              borderRadius: 1.5,
+              borderColor: '#CBD5E1',
+              color: 'text.primary',
+              bgcolor: 'background.paper',
+              '&:hover': { bgcolor: '#F8FAFC' },
+            }}
+          >
+            {isLoadingReport ? 'Loading...' : 'View Report'}
+          </Button>
+
+          {/* AI Analysis / Update Analysis Button */}
           <Button
             variant="contained"
             color="primary"
-            disabled={isAnalyzing || !selectedDate}
-            onClick={() => handleRunAiAnalysis(hasRunAnalysis && isSelectedDateToday)}
-            startIcon={isAnalyzing ? <CircularProgress size={16} color="inherit" /> : <AiIcon />}
+            disabled={isAnalyzing || isLoadingReport || !selectedDate}
+            onClick={handleRunAiAnalysis}
+            startIcon={isAnalyzing ? <CircularProgress size={16} color="inherit" /> : (reportData ? <RefreshIcon /> : <AiIcon />)}
             sx={{
               fontWeight: 600,
               textTransform: 'none',
@@ -350,14 +434,12 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
           >
             {isAnalyzing
               ? 'Analyzing...'
-              : hasRunAnalysis && isSelectedDateToday
+              : reportData
               ? 'Update Analysis'
-              : hasRunAnalysis
-              ? 'Re-run Analysis'
               : 'AI Analysis'}
           </Button>
 
-          {hasRunAnalysis && reportData && (
+          {reportData && (
             <Button
               variant="outlined"
               size="medium"
@@ -385,24 +467,105 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
         </Alert>
       )}
 
+      {/* Stale Report Alert if new conversations occurred after generation */}
+      {reportData && isStale && (
+        <Alert
+          severity="warning"
+          icon={<RefreshIcon />}
+          sx={{ mb: 3, borderRadius: 2, border: '1px solid #FDE68A' }}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              variant="outlined"
+              onClick={handleRunAiAnalysis}
+              disabled={isAnalyzing}
+              sx={{ fontWeight: 600, textTransform: 'none' }}
+            >
+              Update Analysis
+            </Button>
+          }
+        >
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+            Report Stale / Outdated
+          </Typography>
+          <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+            {freshnessNote || 'New conversations or sales were recorded since this report was generated. Click "Update Analysis" to refresh.'}
+          </Typography>
+        </Alert>
+      )}
+
       {/* Loading Progress State */}
-      {isAnalyzing && (
+      {(isAnalyzing || isLoadingReport) && (
         <Card sx={{ p: 4, mb: 3, textAlign: 'center', borderRadius: 2.5, border: '1px solid #E2E8F0' }}>
           <Stack spacing={2} alignItems="center" sx={{ maxWidth: 460, mx: 'auto' }}>
             <CircularProgress size={42} sx={{ color: '#2563EB' }} />
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              Synthesizing Daily AI Intelligence
+              {isAnalyzing ? 'Synthesizing Daily AI Intelligence' : 'Loading Saved Intelligence Report'}
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Fetching real conversation transcripts, extracting customer intent, verifying sales outcomes, and computing coaching scorecards for {formatDisplayDate(selectedDate)}...
+              {isAnalyzing
+                ? `Fetching real conversation transcripts, extracting customer intent, verifying sales outcomes, and computing coaching scorecards for ${formatDisplayDate(selectedDate)}...`
+                : `Retrieving authoritative saved report for ${formatDisplayDate(selectedDate)}...`}
             </Typography>
             <LinearProgress sx={{ width: '100%', height: 6, borderRadius: 3 }} />
           </Stack>
         </Card>
       )}
 
-      {/* 2. Initial State: Clean & Mostly Blank (Before User Clicks AI Analysis) */}
-      {!hasRunAnalysis && !isAnalyzing && (
+      {/* 2A. No Saved Report Found (After clicking View Report) */}
+      {!reportData && noSavedReportFound && !isAnalyzing && !isLoadingReport && (
+        <Card
+          sx={{
+            p: 6,
+            textAlign: 'center',
+            borderRadius: 3,
+            border: '1px dashed #CBD5E1',
+            bgcolor: '#F8FAFC',
+          }}
+        >
+          <Box
+            sx={{
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              bgcolor: '#FEF3C7',
+              color: '#D97706',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mb: 2,
+            }}
+          >
+            <CalendarIcon sx={{ fontSize: 32 }} />
+          </Box>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>
+            No Report Generated for {formatDisplayDate(selectedDate)}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 500, mx: 'auto', mb: 3, lineHeight: 1.6 }}>
+            No saved daily analysis exists for this date. Click <strong>AI Analysis</strong> below to process completed conversations, verified transactions, and staff coaching scorecards.
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AiIcon />}
+            onClick={handleRunAiAnalysis}
+            sx={{
+              fontWeight: 600,
+              textTransform: 'none',
+              px: 3,
+              py: 1.2,
+              borderRadius: 2,
+              bgcolor: '#0F172A',
+              '&:hover': { bgcolor: '#1E293B' },
+            }}
+          >
+            Generate AI Analysis for {formatDisplayDate(selectedDate)}
+          </Button>
+        </Card>
+      )}
+
+      {/* 2B. Initial State: Clean & Mostly Blank (Before Any Search) */}
+      {!reportData && !hasSearched && !isAnalyzing && !isLoadingReport && (
         <Card
           sx={{
             p: 6,
@@ -428,32 +591,42 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
             <CalendarIcon sx={{ fontSize: 32 }} />
           </Box>
           <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>
-            Ready for Daily Intelligence Analysis
+            Calendar-Based Daily Reports
           </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 480, mx: 'auto', mb: 3, lineHeight: 1.6 }}>
-            Select a date using the calendar above and click <strong>AI Analysis</strong> to evaluate daily sales conversations, verified revenue, customer sentiment, and agent coaching scorecards.
+          <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 520, mx: 'auto', mb: 3, lineHeight: 1.6 }}>
+            Select a date from the calendar and click <strong>View Report</strong> to inspect saved intelligence reports, or click <strong>AI Analysis</strong> to generate a fresh auditable performance assessment.
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AiIcon />}
-            onClick={() => handleRunAiAnalysis(false)}
-            sx={{
-              fontWeight: 600,
-              textTransform: 'none',
-              px: 3,
-              py: 1.2,
-              borderRadius: 2,
-              bgcolor: '#0F172A',
-              '&:hover': { bgcolor: '#1E293B' },
-            }}
-          >
-            Generate AI Analysis for {formatDisplayDate(selectedDate)}
-          </Button>
+          <Stack direction="row" spacing={2} justifyContent="center">
+            <Button
+              variant="outlined"
+              startIcon={<ViewIcon />}
+              onClick={handleViewReport}
+              sx={{ fontWeight: 600, textTransform: 'none', px: 2.5, py: 1, borderRadius: 2 }}
+            >
+              View Saved Report
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AiIcon />}
+              onClick={handleRunAiAnalysis}
+              sx={{
+                fontWeight: 600,
+                textTransform: 'none',
+                px: 2.5,
+                py: 1,
+                borderRadius: 2,
+                bgcolor: '#0F172A',
+                '&:hover': { bgcolor: '#1E293B' },
+              }}
+            >
+              Generate AI Analysis
+            </Button>
+          </Stack>
         </Card>
       )}
 
       {/* 3. Generated Report View */}
-      {hasRunAnalysis && !isAnalyzing && reportData && (
+      {reportData && !isAnalyzing && !isLoadingReport && (
         <Stack spacing={3}>
           {/* A. Daily Performance Headline Card (Screenshot 5) */}
           <Card
@@ -527,7 +700,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                   {revenueDisplay}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  {verifiedSalesCount} item(s) sold
+                  {verifiedSalesCount} verified sale(s)
                 </Typography>
               </Card>
             </Grid>
@@ -545,7 +718,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                   {totalConversations}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  {totalConversations} customer interaction{totalConversations === 1 ? '' : 's'}
+                  {totalConversations} completed consultation{totalConversations === 1 ? '' : 's'}
                 </Typography>
               </Card>
             </Grid>
@@ -560,7 +733,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                   Avg. Ticket
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary', mt: 0.5 }}>
-                  {avgTicketDisplay}
+                  {reportData?.metrics?.avgTicketDisplay || 'N/A'}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
                   per verified sale
@@ -578,10 +751,10 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                   Missed
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary', mt: 0.5 }}>
-                  {missedDisplay}
+                  {reportData?.metrics?.missedOpportunitiesDisplay || '0'}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  unconverted dialogue
+                  {reportData?.metrics?.missedOpportunitiesCount || 0} unconverted
                 </Typography>
               </Card>
             </Grid>
@@ -596,10 +769,10 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                   Low Stock
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary', mt: 0.5 }}>
-                  {lowStockDisplay}
+                  {reportData?.metrics?.lowStockDisplay || 'N/A'}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  all stocked
+                  {reportData?.metrics?.lowStockCount != null ? `${reportData.metrics.lowStockCount} below threshold` : 'inventory unmonitored'}
                 </Typography>
               </Card>
             </Grid>
@@ -980,7 +1153,59 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                 })}
               </Stack>
             </Box>
-          )}
+          {/* F. Data Governance, Boundaries & Audit Limitations */}
+          <Card sx={{ p: 3, borderRadius: 2.5, border: '1px solid #E2E8F0', bgcolor: '#F8FAFC' }}>
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
+              <ShieldIcon sx={{ fontSize: 18, color: '#64748B' }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                Data Governance & System Audit Notes
+              </Typography>
+            </Stack>
+
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={12} sm={4}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, display: 'block' }}>
+                  BUSINESS TIMEZONE
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mt: 0.25 }}>
+                  {reportData.businessTimezone || 'America/New_York'}
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} sm={4}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, display: 'block' }}>
+                  REPORTING-DATE ATTRIBUTION RULE
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mt: 0.25 }}>
+                  Attributed by immutable session start time
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} sm={4}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, display: 'block' }}>
+                  LAST SYNCHRONIZED
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mt: 0.25 }}>
+                  {reportData.lastRefreshedAt ? new Date(reportData.lastRefreshedAt).toLocaleString() : 'Real-time'}
+                </Typography>
+              </Grid>
+            </Grid>
+
+            {reportData.dataLimitations && reportData.dataLimitations.length > 0 && (
+              <Box sx={{ pt: 1.5, borderTop: '1px solid #E2E8F0' }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, display: 'block', mb: 0.75 }}>
+                  AUDIT BOUNDARIES & HARDWARE LIMITATIONS
+                </Typography>
+                <Stack spacing={0.5}>
+                  {reportData.dataLimitations.map((lim, idx) => (
+                    <Typography key={idx} variant="caption" sx={{ color: '#475569', display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span style={{ fontSize: '10px' }}>•</span> {lim}
+                    </Typography>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+          </Card>
         </Stack>
       )}
 
