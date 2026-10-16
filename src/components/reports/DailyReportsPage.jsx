@@ -161,8 +161,9 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
         throw new Error(data.error);
       }
 
-      if (data.hasReport && data.report) {
-        setReportData(data.report);
+      const report = data.report || data;
+      if (data.hasReport && report) {
+        setReportData(report);
         setIsStale(Boolean(data.isStale));
         setFreshnessNote(data.freshnessNote || '');
         setNoSavedReportFound(false);
@@ -175,10 +176,14 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
     } catch (err) {
       console.error('[DailyReportsPage] Filter report error:', err);
       setErrorMessage(err.message || 'Failed to fetch saved report.');
+      setNoSavedReportFound(true);
     } finally {
       setIsLoadingReport(false);
     }
   };
+
+  // Safe alias for backward compatibility
+  const handleViewReport = handleFilterReport;
 
   // Automatically check and display today's report on mount if already generated
   useEffect(() => {
@@ -557,8 +562,8 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
         </Card>
       )}
 
-      {/* 2A. No Saved Report Found (After clicking View Report) */}
-      {!reportData && noSavedReportFound && !isAnalyzing && !isLoadingReport && (
+      {/* 2. Empty State / No Report View (Always renders when reportData is null and not loading) */}
+      {!reportData && !isAnalyzing && !isLoadingReport && (
         <Card
           sx={{
             p: 6,
@@ -573,8 +578,8 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
               width: 64,
               height: 64,
               borderRadius: '50%',
-              bgcolor: '#FEF3C7',
-              color: '#D97706',
+              bgcolor: noSavedReportFound ? '#FEF3C7' : '#EFF6FF',
+              color: noSavedReportFound ? '#D97706' : '#2563EB',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -584,70 +589,23 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
             <CalendarIcon sx={{ fontSize: 32 }} />
           </Box>
           <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>
-            No Report Generated for {formatDisplayDate(selectedDate)}
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 500, mx: 'auto', mb: 3, lineHeight: 1.6 }}>
-            No saved daily report exists for this date. Click <strong>Generate Analysis</strong> below to process completed conversations, verified transactions, and staff coaching scorecards.
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AiIcon />}
-            onClick={handleRunAiAnalysis}
-            sx={{
-              fontWeight: 600,
-              textTransform: 'none',
-              px: 3,
-              py: 1.2,
-              borderRadius: 2,
-              bgcolor: '#0F172A',
-              '&:hover': { bgcolor: '#1E293B' },
-            }}
-          >
-            Generate Analysis for {formatDisplayDate(selectedDate)}
-          </Button>
-        </Card>
-      )}
-
-      {/* 2B. Initial State: Clean & Mostly Blank (Before Any Search) */}
-      {!reportData && !hasSearched && !isAnalyzing && !isLoadingReport && (
-        <Card
-          sx={{
-            p: 6,
-            textAlign: 'center',
-            borderRadius: 3,
-            border: '1px dashed #CBD5E1',
-            bgcolor: '#F8FAFC',
-          }}
-        >
-          <Box
-            sx={{
-              width: 64,
-              height: 64,
-              borderRadius: '50%',
-              bgcolor: '#EFF6FF',
-              color: '#2563EB',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mb: 2,
-            }}
-          >
-            <CalendarIcon sx={{ fontSize: 32 }} />
-          </Box>
-          <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>
-            Calendar-Based Daily Reports
+            {noSavedReportFound
+              ? `No Report Generated for ${formatDisplayDate(selectedDate)}`
+              : `Daily Sales Intelligence & Performance Reports`}
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 520, mx: 'auto', mb: 3, lineHeight: 1.6 }}>
-            Select a date from the calendar and click <strong>View Report</strong> to inspect saved intelligence reports, or click <strong>AI Analysis</strong> to generate a fresh auditable performance assessment.
+            {noSavedReportFound
+              ? `No saved daily report exists for this date. Click "Generate Analysis" below to process completed conversations, verified transactions, and staff coaching scorecards.`
+              : `Select a date from the calendar and click Filter to inspect saved intelligence reports, or click Generate Analysis to produce a new daily report.`}
           </Typography>
-          <Stack direction="row" spacing={2} justifyContent="center">
+          <Stack direction="row" spacing={2} justifyContent="center" flexWrap="wrap">
             <Button
               variant="outlined"
-              startIcon={<ViewIcon />}
-              onClick={handleViewReport}
+              startIcon={<FilterIcon />}
+              onClick={() => handleFilterReport(selectedDate)}
               sx={{ fontWeight: 600, textTransform: 'none', px: 2.5, py: 1, borderRadius: 2 }}
             >
-              View Saved Report
+              Filter Report
             </Button>
             <Button
               variant="contained"
@@ -663,7 +621,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                 '&:hover': { bgcolor: '#1E293B' },
               }}
             >
-              Generate AI Analysis
+              Generate Analysis for {formatDisplayDate(selectedDate)}
             </Button>
           </Stack>
         </Card>
@@ -720,7 +678,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
               </Stack>
               <Typography variant="caption" sx={{ color: '#64748B' }}>•</Typography>
               <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-                Generated {new Date(reportData.generatedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} • {totalConversations} conversation{totalConversations === 1 ? '' : 's'}
+                Generated {new Date(reportData.generatedAt || reportData.lastRefreshedAt || reportData.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} • {totalConversations} conversation{totalConversations === 1 ? '' : 's'}
               </Typography>
             </Stack>
 
