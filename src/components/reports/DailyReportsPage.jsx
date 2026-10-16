@@ -41,6 +41,10 @@ import {
   Divider,
   Alert,
   LinearProgress,
+  FormControl,
+  Select,
+  MenuItem,
+  InputLabel,
 } from '@mui/material';
 import {
   AutoAwesome as AiIcon,
@@ -69,12 +73,16 @@ import {
 import { BACKEND_URL } from '../../config/api';
 import { downloadDailyReportPDF } from '../../utils/pdfReportService';
 
-// Format YYYY-MM-DD from Date in local timezone
+// Format YYYY-MM-DD from Date in Asia/Karachi business timezone
 function formatLocalDate(date = new Date()) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Karachi' }).format(date);
+  } catch (e) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
 }
 
 // Pretty formatted business date string
@@ -98,9 +106,14 @@ function formatDisplayDate(dateStr) {
 }
 
 export default function DailyReportsPage({ currentUser, token, socket, onNavigate }) {
-  // Calendar filter state (defaults to today)
+  // Calendar filter state (defaults to today in business timezone)
   const todayStr = formatLocalDate(new Date());
   const [selectedDate, setSelectedDate] = useState(todayStr);
+
+  // Store filter state (defaults to 'all' so all desktop recordings under STORE-01 are visible)
+  const isManagerLocked = currentUser?.role === 'sales_manager' && currentUser.storeCode;
+  const [selectedStore, setSelectedStore] = useState(isManagerLocked ? currentUser.storeCode : 'all');
+  const [availableStores, setAvailableStores] = useState([]);
 
   // Analysis report state
   const [reportData, setReportData] = useState(null);
@@ -121,11 +134,35 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
   const [transcriptModalOpen, setTranscriptModalOpen] = useState(false);
   const [activeTranscriptSession, setActiveTranscriptSession] = useState(null);
 
+  // Fetch available stores on mount
+  useEffect(() => {
+    const fetchStores = async () => {
+      try {
+        const authToken = token || localStorage.getItem('storelistener_token');
+        const res = await fetch(`${BACKEND_URL}/api/stores`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.stores)) {
+          setAvailableStores(data.stores);
+        }
+      } catch (e) {
+        console.warn('[DailyReportsPage] Store list fetch note:', e.message);
+      }
+    };
+    fetchStores();
+  }, [token]);
+
   /**
-   * 1. Filter Report: Fetches existing saved report from MongoDB for the selected date
+   * 1. Filter Report: Fetches existing saved report from MongoDB for the selected date and store
    */
-  const handleFilterReport = async (dateParam = selectedDate) => {
+  const handleFilterReport = async (dateParam = selectedDate, storeParam = selectedStore) => {
     const targetDate = dateParam || selectedDate;
+    const targetStore = storeParam !== undefined ? storeParam : selectedStore;
     if (!targetDate) {
       setErrorMessage('Please choose a valid calendar date.');
       return;
@@ -137,11 +174,10 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
 
     try {
       const authToken = token || localStorage.getItem('storelistener_token') || localStorage.getItem('token');
-      const storeScope = currentUser?.storeCode || 'all';
       const params = new URLSearchParams({
         filterType: 'single',
         date: targetDate,
-        ...(storeScope !== 'all' ? { store: storeScope } : {}),
+        ...(targetStore && targetStore !== 'all' ? { store: targetStore } : {}),
       });
 
       const res = await fetch(`${BACKEND_URL}/api/reports/daily?${params.toString()}`, {
@@ -188,16 +224,45 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
   // Automatically check and display today's report on mount if already generated
   useEffect(() => {
     if (selectedDate) {
-      handleFilterReport(selectedDate);
+      handleFilterReport(selectedDate, selectedStore);
     }
   }, []);
+
+  // Real-time Socket.IO listeners: Refresh when new conversations or sales are recorded
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRealtimeUpdate = (payload) => {
+      console.log('⚡ [DailyReportsPage] Real-time store activity notification:', payload);
+      if (selectedDate) {
+        handleFilterReport(selectedDate, selectedStore);
+      }
+    };
+
+    socket.on('session_ended', handleRealtimeUpdate);
+    socket.on('deal_analysis_updated', handleRealtimeUpdate);
+    socket.on('scorecard_updated', handleRealtimeUpdate);
+    socket.on('verified_sale_updated', handleRealtimeUpdate);
+    socket.on('connect', () => {
+      if (selectedDate) handleFilterReport(selectedDate, selectedStore);
+    });
+
+    return () => {
+      socket.off('session_ended', handleRealtimeUpdate);
+      socket.off('deal_analysis_updated', handleRealtimeUpdate);
+      socket.off('scorecard_updated', handleRealtimeUpdate);
+      socket.off('verified_sale_updated', handleRealtimeUpdate);
+    };
+  }, [socket, selectedDate, selectedStore]);
 
   /**
    * 2. AI Analysis / Regenerate: Fetches latest authoritative records, recalculates metrics,
    * runs grounded AI synthesis, and persists/updates the single report document in MongoDB.
    */
-  const handleRunAiAnalysis = async () => {
-    if (!selectedDate) {
+  const handleRunAiAnalysis = async (dateParam = selectedDate, storeParam = selectedStore) => {
+    const targetDate = dateParam || selectedDate;
+    const targetStore = storeParam !== undefined ? storeParam : selectedStore;
+    if (!targetDate) {
       setErrorMessage('Please choose a valid calendar date.');
       return;
     }
@@ -208,7 +273,6 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
 
     try {
       const authToken = token || localStorage.getItem('storelistener_token') || localStorage.getItem('token');
-      const storeScope = currentUser?.storeCode || 'all';
 
       const res = await fetch(`${BACKEND_URL}/api/reports/daily/analyze`, {
         method: 'POST',
@@ -218,9 +282,9 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
         body: JSON.stringify({
-          date: selectedDate,
+          date: targetDate,
           filterType: 'single',
-          store: storeScope,
+          store: targetStore || 'all',
           refresh: true,
         }),
       });
@@ -307,16 +371,16 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
    */
   const handleExportPdf = async () => {
     if (!reportData) return;
-    try {
       downloadDailyReportPDF({
         reportData,
         currentUser,
+        selectedStoreId: selectedStore,
       });
     } catch (err) {
       console.warn('[DailyReportsPage] Client-side PDF generation note, falling back to server export:', err);
       try {
         const authToken = token || localStorage.getItem('storelistener_token') || localStorage.getItem('token');
-        const storeScope = currentUser?.storeCode || reportData?.activeFilters?.store || 'all';
+        const storeScope = selectedStore || currentUser?.storeCode || reportData?.activeFilters?.store || 'all';
         const params = new URLSearchParams({
           date: selectedDate,
           filterType: 'single',
@@ -418,17 +482,43 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
           </Typography>
         </Box>
 
-        {/* Action Controls: Calendar Date Picker, View Report, AI/Update Analysis, Export PDF */}
+        {/* Action Controls: Store Location Dropdown, Calendar Date Picker, Filter Report, AI/Update Analysis, Export PDF */}
         <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+          {/* Store Location Selector */}
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 190 }, bgcolor: 'background.paper', borderRadius: 1.5 }}>
+            <InputLabel id="daily-report-store-label">Store Location</InputLabel>
+            <Select
+              labelId="daily-report-store-label"
+              value={selectedStore}
+              label="Store Location"
+              disabled={Boolean(isManagerLocked) || isAnalyzing || isLoadingReport}
+              onChange={(e) => {
+                const nextStore = e.target.value;
+                setSelectedStore(nextStore);
+                handleFilterReport(selectedDate, nextStore);
+              }}
+              sx={{ borderRadius: 1.5 }}
+            >
+              <MenuItem value="all">All Retail Branches</MenuItem>
+              {availableStores.map((store) => (
+                <MenuItem key={store.storeCode || store.id} value={store.storeCode || store.id}>
+                  {store.name} ({store.storeCode || store.id})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
           <TextField
             type="date"
             size="small"
             value={selectedDate}
             onChange={(e) => {
-              setSelectedDate(e.target.value);
+              const nextDate = e.target.value;
+              setSelectedDate(nextDate);
               setReportData(null);
               setNoSavedReportFound(false);
               setHasSearched(false);
+              handleFilterReport(nextDate, selectedStore);
             }}
             disabled={isAnalyzing || isLoadingReport}
             sx={{
@@ -446,7 +536,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
           <Button
             variant="outlined"
             disabled={isAnalyzing || isLoadingReport || !selectedDate}
-            onClick={() => handleFilterReport(selectedDate)}
+            onClick={() => handleFilterReport(selectedDate, selectedStore)}
             startIcon={isLoadingReport ? <CircularProgress size={16} color="inherit" /> : <FilterIcon />}
             sx={{
               fontWeight: 600,
@@ -468,7 +558,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
             variant="contained"
             color="primary"
             disabled={isAnalyzing || isLoadingReport || !selectedDate}
-            onClick={handleRunAiAnalysis}
+            onClick={() => handleRunAiAnalysis(selectedDate, selectedStore)}
             startIcon={isAnalyzing ? <CircularProgress size={16} color="inherit" /> : (reportData ? <RefreshIcon /> : <AiIcon />)}
             sx={{
               fontWeight: 600,
@@ -527,7 +617,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
               color="inherit"
               size="small"
               variant="outlined"
-              onClick={handleRunAiAnalysis}
+              onClick={() => handleRunAiAnalysis(selectedDate, selectedStore)}
               disabled={isAnalyzing}
               sx={{ fontWeight: 600, textTransform: 'none' }}
             >
@@ -602,7 +692,8 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
             <Button
               variant="outlined"
               startIcon={<FilterIcon />}
-              onClick={() => handleFilterReport(selectedDate)}
+              onClick={() => handleFilterReport(selectedDate, selectedStore)}
+              disabled={isAnalyzing || isLoadingReport}
               sx={{ fontWeight: 600, textTransform: 'none', px: 2.5, py: 1, borderRadius: 2 }}
             >
               Filter Report
@@ -610,7 +701,8 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
             <Button
               variant="contained"
               startIcon={<AiIcon />}
-              onClick={handleRunAiAnalysis}
+              onClick={() => handleRunAiAnalysis(selectedDate, selectedStore)}
+              disabled={isAnalyzing || isLoadingReport}
               sx={{
                 fontWeight: 600,
                 textTransform: 'none',
