@@ -371,6 +371,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
    */
   const handleExportPdf = async () => {
     if (!reportData) return;
+    try {
       downloadDailyReportPDF({
         reportData,
         currentUser,
