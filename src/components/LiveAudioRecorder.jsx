@@ -6,7 +6,7 @@ import { BACKEND_URL } from '../config/api';
 export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', storeName = 'Apple Store 5th Ave', salesRep = 'Specialist', onSessionSaved }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [language, setLanguage] = useState('ur-PK'); // 'ur-PK' | 'pa-IN' | 'en-US'
+  const [language, setLanguage] = useState('en-US'); // 'en-US' | 'es-ES'
   const [sessionId, setSessionId] = useState(null);
   const [seconds, setSeconds] = useState(0);
 
@@ -108,25 +108,10 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
     setInterimText('');
     const speaker = speakerOverride || detectProbableSpeaker(text);
 
-    const newItem = {
-      timestamp: new Date(),
-      speaker,
-      text
-    };
+    // Push to backend REST API to obtain normalized/translated English transcript
+    let canonicalEnglish = text;
+    let wasRejected = false;
 
-    setTranscripts(prev => [...prev, newItem]);
-
-    // Stream to Socket for real-time Admin monitor
-    if (socket && sessionId) {
-      socket.emit('live_transcript_stream', {
-        sessionId,
-        text,
-        speaker,
-        isFinal: true
-      });
-    }
-
-    // Push to backend REST API
     if (sessionId) {
       try {
         const res = await fetch(`${BACKEND_URL}/api/sessions/${sessionId}/transcript`, {
@@ -136,23 +121,50 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
           body: JSON.stringify({ text, speaker })
         });
         const data = await res.json();
-        if (data.success && data.realtimeAnalysis) {
-          const ai = data.realtimeAnalysis;
-          if (ai.probability) setProbability(ai.probability);
-          if (ai.detectedProducts && ai.detectedProducts.length > 0) {
-            setDetectedProduct(ai.detectedProducts[0]);
+        if (data.success && data.item) {
+          canonicalEnglish = data.item.englishText || data.item.text || text;
+          if (data.realtimeAnalysis) {
+            const ai = data.realtimeAnalysis;
+            if (ai.probability) setProbability(ai.probability);
+            if (ai.detectedProducts && ai.detectedProducts.length > 0) {
+              setDetectedProduct(ai.detectedProducts[0]);
+            }
+            if (ai.detectedObjection) {
+              setDetectedObjection(ai.detectedObjection);
+            }
+            if (ai.isClosingSignal) {
+              setClosureAlert(ai.closingMatch || canonicalEnglish);
+              setProbability(95);
+            }
           }
-          if (ai.detectedObjection) {
-            setDetectedObjection(ai.detectedObjection);
-          }
-          if (ai.isClosingSignal) {
-            setClosureAlert(ai.closingMatch || text);
-            setProbability(95);
-          }
+        } else if (!data.success) {
+          // Segment was rejected (e.g. unsupported language)
+          wasRejected = true;
+          console.warn('[Transcript] Segment rejected:', data.error);
         }
       } catch (err) {
         console.warn('Transcript save error:', err.message);
       }
+    }
+
+    if (wasRejected) return;
+
+    const newItem = {
+      timestamp: new Date(),
+      speaker,
+      text: canonicalEnglish
+    };
+
+    setTranscripts(prev => [...prev, newItem]);
+
+    // Stream to Socket for real-time Admin monitor
+    if (socket && sessionId) {
+      socket.emit('live_transcript_stream', {
+        sessionId,
+        text: canonicalEnglish,
+        speaker,
+        isFinal: true
+      });
     }
 
     // Scroll to bottom
@@ -164,16 +176,17 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
   const detectProbableSpeaker = (text) => {
     const lower = text.toLowerCase();
     if (
-      lower.includes('کتنے کا') || lower.includes('کی ریٹ') || lower.includes('رعایت') ||
-      lower.includes('کم کرو') || lower.includes('وارنٹی') || lower.includes('پرانا فون') ||
+      lower.includes('cuanto') || lower.includes('cuesta') || lower.includes('precio') ||
+      lower.includes('descuento') || lower.includes('comprar') || lower.includes('quisiera') ||
       lower.includes('how much') || lower.includes('can i') || lower.includes('discount') ||
-      lower.includes('مہنگا') || lower.includes('mehnga') || lower.includes('le lu')
+      lower.includes('expensive') || lower.includes('trade-in') || lower.includes('trade in')
     ) {
       return 'customer';
     }
     if (
-      lower.includes('خوش آمدید') || lower.includes('جی سر') || lower.includes('ہم آپ کو') ||
-      lower.includes('welcome') || lower.includes('we have') || lower.includes('offer')
+      lower.includes('bienvenido') || lower.includes('tenemos') || lower.includes('ofrecemos') ||
+      lower.includes('welcome') || lower.includes('we have') || lower.includes('offer') ||
+      lower.includes('applecare') || lower.includes('warranty') || lower.includes('in stock')
     ) {
       return 'sales_rep';
     }
@@ -448,27 +461,25 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
       })
     });
 
-    const scriptUrdu = [
-      { speaker: 'customer', text: 'السلام علیکم! میں نے آئی فون 16 پرو میکس دیکھنا ہے، کیا اسٹاک میں دستیاب ہے؟' },
-      { speaker: 'sales_rep', text: 'وعلیکم السلام! جی بالکل، ہمارے پاس 16 پرو میکس ڈیزرٹ ٹائٹینیم 256GB موجود ہے۔' },
-      { speaker: 'customer', text: 'پرائس تھوڑی زیادہ ہے، کیا پرانے آئی فون کا ایکسچینج یا کوئی ڈسکاؤنٹ مل سکتا ہے؟' },
-      { speaker: 'sales_rep', text: 'جی ہاں، ٹریڈ ان پر آپ کو 450 ڈالر تک ویلیو ملے گی اور ساتھ میں زیرو پرسنٹ اقساط کا پلان بھی ہے۔' },
-      { speaker: 'customer', text: 'زبردست! وارنٹی اور ایپل کیئر کا کیا طریقہ کار ہے؟' },
-      { speaker: 'sales_rep', text: 'ایپل کیئر پلس میں اسکرین کا فل کور اور انسٹنٹ ریپلیسمنٹ شامل ہے۔' },
-      { speaker: 'customer', text: 'بہت بہترین ڈیل ہے۔ میں لے رہا ہوں، پیک کر دیں اور کارڈ سے پیمنٹ کر رہا ہوں!' },
-      { speaker: 'sales_rep', text: 'مبارک ہو! کارڈ سوائپ کریں، آپ کا نیا آئی فون 16 پرو میکس تیار ہے، ڈیل فائنل ہو گئی!' }
+    const scriptEnglish = [
+      { speaker: 'customer', text: 'Hello, how are you? We have new products available today.' },
+      { speaker: 'sales_rep', text: 'Welcome! We have the iPhone 16 Pro Max in Desert Titanium in stock.' },
+      { speaker: 'customer', text: 'I would like to trade in my old iPhone for a discount.' },
+      { speaker: 'sales_rep', text: 'Yes, our trade-in program gives you up to $450 towards your new device.' },
+      { speaker: 'customer', text: 'Awesome! I will take it with AppleCare warranty, paying with card.' },
+      { speaker: 'sales_rep', text: 'Congratulations! Deal confirmed, your new iPhone is ready.' }
     ];
 
-    const scriptPunjabi = [
-      { speaker: 'customer', text: 'سلام جی! آئی فون 16 پرو کی ریٹ کی اے؟' },
-      { speaker: 'sales_rep', text: 'جی ویر جی، 16 پرو بلیک ٹائٹینیم بالکل فریش اسٹاک وچ پیا اے۔' },
-      { speaker: 'customer', text: 'تھوڑا بجٹ توں باہر اے، کوئی رعایت یا پرانے فون دا تبادلہ ہو سکدا اے؟' },
-      { speaker: 'sales_rep', text: 'پرانے فون تے وڈا ڈسکاؤنٹ مل جائے گا تے قسطاں وی ہو جان گیاں۔' },
-      { speaker: 'customer', text: 'اے تاں بڑی ودھیا گل اے۔ فائنل کرو جی، کارڈ نال پیسے دے دتے نے!' },
-      { speaker: 'sales_rep', text: 'لکھ واری مبارک ہووے! فون پیک کر دتا اے، ڈیل ڈن ہو گئی!' }
+    const scriptSpanish = [
+      { speaker: 'customer', text: 'Hola, ¿cómo estás? Tenemos nuevos productos disponibles hoy.' },
+      { speaker: 'sales_rep', text: 'Welcome! We have the new iPhone 16 Pro in stock.' },
+      { speaker: 'customer', text: 'Quisiera comprar un cargador nuevo y ver financiamiento.' },
+      { speaker: 'sales_rep', text: 'We have 0% financing available with credit card.' },
+      { speaker: 'customer', text: 'Puedo pagar con tarjeta de crédito, muchas gracias por la ayuda.' },
+      { speaker: 'sales_rep', text: 'Congratulations! Your transaction is approved and completed.' }
     ];
 
-    const chosenScript = langChoice === 'ur' ? scriptUrdu : scriptPunjabi;
+    const chosenScript = langChoice === 'es' ? scriptSpanish : scriptEnglish;
 
     for (let i = 0; i < chosenScript.length; i++) {
       const step = chosenScript[i];
@@ -486,7 +497,7 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
       body: JSON.stringify({ durationSeconds: 48 })
     });
 
-    setSaveStatus('✅ Urdu/Punjabi conversation finalized & deal closure verified!');
+    setSaveStatus('✅ Conversation finalized & English transcript saved!');
     setIsRecording(false);
     if (onSessionSaved) onSessionSaved();
   };
@@ -518,10 +529,10 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
             </div>
             <div>
               <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
-                Live In-Store Voice Recording & Multilingual Transcription Terminal
+                Live In-Store Voice Recording Terminal
               </h2>
               <p style={{ fontSize: '12.5px', color: '#64748b', marginTop: '2px' }}>
-                Real-time microphone capture with instant Urdu & Punjabi transcription and audio recording archive
+                Real-time speech capture: English speech verbatim, Spanish speech automatically translated to English
               </p>
             </div>
           </div>
@@ -555,9 +566,8 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
                 cursor: 'pointer'
               }}
             >
-              <option value="ur-PK">🇵🇰 اردو (Urdu)</option>
-              <option value="pa-IN">🇵🇰/🇮🇳 پنجابی (Punjabi)</option>
               <option value="en-US">🇺🇸 English</option>
+              <option value="es-ES">🇪🇸 Spanish (Translates to English)</option>
             </select>
           </div>
 
@@ -623,11 +633,11 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
             </div>
           )}
 
-          {/* Simulate Urdu / Punjabi One-Click Buttons */}
+          {/* Test Buttons */}
           {!isRecording && (
             <div style={{ display: 'flex', gap: '6px' }}>
               <button
-                onClick={() => simulateMultilingualChat('ur')}
+                onClick={() => simulateMultilingualChat('en')}
                 style={{
                   padding: '9px 13px',
                   borderRadius: '10px',
@@ -640,14 +650,14 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
                   alignItems: 'center',
                   gap: '6px'
                 }}
-                title="Test Urdu deal dialogue stream"
+                title="Test English dialogue stream"
               >
                 <Sparkles size={14} />
-                <span>Test Urdu Stream</span>
+                <span>Test English Stream</span>
               </button>
 
               <button
-                onClick={() => simulateMultilingualChat('pa')}
+                onClick={() => simulateMultilingualChat('es')}
                 style={{
                   padding: '9px 13px',
                   borderRadius: '10px',
@@ -660,13 +670,14 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
                   alignItems: 'center',
                   gap: '6px'
                 }}
-                title="Test Punjabi deal dialogue stream"
+                title="Test Spanish-to-English translation stream"
               >
                 <Sparkles size={14} />
-                <span>Test Punjabi Stream</span>
+                <span>Test Spanish Translation</span>
               </button>
             </div>
           )}
+
 
         </div>
       </div>
@@ -862,10 +873,10 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid #f1f5f9' }}>
             <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>💬</span> Live Multilingual Speech Recognition Stream ({transcripts.length})
+              <span>💬</span> Live Speech Recognition Stream ({transcripts.length})
             </div>
             <span style={{ fontSize: '11px', color: '#64748b' }}>
-              Lang: <b>{language === 'ur-PK' ? 'اردو' : (language === 'pa-IN' ? 'پنجابی' : 'English')}</b>
+              Lang: <b>{language.startsWith('es') ? 'Spanish → English' : 'English'}</b>
             </span>
           </div>
 
@@ -890,8 +901,8 @@ export default function LiveAudioRecorder({ socket, storeCode = 'STORE-NYC-01', 
                 padding: '40px 20px',
                 lineHeight: 1.6
               }}>
-                🎙️ Mic stream is ready. Press <b>"Start Live Mic Recording"</b> above and speak in <b>Urdu, Punjabi, or English</b>.<br />
-                Your voice will be transcribed live and recorded for admin playback.
+                🎙️ Mic stream is ready. Press <b>"Start Live Mic Recording"</b> above and speak in <b>English or Spanish</b>.<br />
+                Spanish speech will be automatically translated into English in the final transcript.
               </div>
             )}
 

@@ -80,12 +80,19 @@ function countSentences(text) {
  * Formats an array of finalized transcript segments and optional interim text
  * into cohesive, naturally readable paragraphs.
  */
+const NON_LATIN_SCRIPTS = /[\u0900-\u097F\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF\u0A00-\u0A7F\u0400-\u04FF\u4E00-\u9FFF\u3040-\u30FF\uAC00-\uD7AF]/;
+
 export function formatIntoParagraphs(segments = [], interimText = '', activeSpeaker = 'Customer') {
   const paragraphs = [];
   let currentPara = null;
 
   const validSegments = Array.isArray(segments)
-    ? segments.filter((s) => s && (s.englishText || s.text) && String(s.englishText || s.text).trim().length > 0)
+    ? segments.filter((s) => {
+        if (!s || s.isUnsupported) return false;
+        const txt = String(s.englishText || s.text || '').trim();
+        if (!txt || NON_LATIN_SCRIPTS.test(txt)) return false;
+        return true;
+      })
     : [];
 
   for (let i = 0; i < validSegments.length; i++) {
