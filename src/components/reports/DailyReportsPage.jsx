@@ -13,7 +13,7 @@
  * 8. Publication-grade PDF export adhering to executive standards.
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -47,6 +47,7 @@ import {
   CalendarMonth as CalendarIcon,
   Download as ExportIcon,
   Refresh as RefreshIcon,
+  FilterList as FilterIcon,
   PlayArrow as PlayIcon,
   Pause as PauseIcon,
   Shield as ShieldIcon,
@@ -121,10 +122,11 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
   const [activeTranscriptSession, setActiveTranscriptSession] = useState(null);
 
   /**
-   * 1. View Report: Fetches existing saved report from MongoDB WITHOUT generating a new one
+   * 1. Filter Report: Fetches existing saved report from MongoDB for the selected date
    */
-  const handleViewReport = async () => {
-    if (!selectedDate) {
+  const handleFilterReport = async (dateParam = selectedDate) => {
+    const targetDate = dateParam || selectedDate;
+    if (!targetDate) {
       setErrorMessage('Please choose a valid calendar date.');
       return;
     }
@@ -138,7 +140,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
       const storeScope = currentUser?.storeCode || 'all';
       const params = new URLSearchParams({
         filterType: 'single',
-        date: selectedDate,
+        date: targetDate,
         ...(storeScope !== 'all' ? { store: storeScope } : {}),
       });
 
@@ -171,15 +173,22 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
         setNoSavedReportFound(true);
       }
     } catch (err) {
-      console.error('[DailyReportsPage] View report error:', err);
+      console.error('[DailyReportsPage] Filter report error:', err);
       setErrorMessage(err.message || 'Failed to fetch saved report.');
     } finally {
       setIsLoadingReport(false);
     }
   };
 
+  // Automatically check and display today's report on mount if already generated
+  useEffect(() => {
+    if (selectedDate) {
+      handleFilterReport(selectedDate);
+    }
+  }, []);
+
   /**
-   * 2. AI Analysis / Update Analysis: Fetches latest authoritative records, recalculates metrics,
+   * 2. AI Analysis / Regenerate: Fetches latest authoritative records, recalculates metrics,
    * runs grounded AI synthesis, and persists/updates the single report document in MongoDB.
    */
   const handleRunAiAnalysis = async () => {
@@ -428,12 +437,12 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
             }}
           />
 
-          {/* View Report Button: Inspect existing saved report without silent generation */}
+          {/* Filter Button: Inspect existing saved report for selected date */}
           <Button
             variant="outlined"
             disabled={isAnalyzing || isLoadingReport || !selectedDate}
-            onClick={handleViewReport}
-            startIcon={isLoadingReport ? <CircularProgress size={16} color="inherit" /> : <ViewIcon />}
+            onClick={() => handleFilterReport(selectedDate)}
+            startIcon={isLoadingReport ? <CircularProgress size={16} color="inherit" /> : <FilterIcon />}
             sx={{
               fontWeight: 600,
               textTransform: 'none',
@@ -446,10 +455,10 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
               '&:hover': { bgcolor: '#F8FAFC' },
             }}
           >
-            {isLoadingReport ? 'Loading...' : 'View Report'}
+            {isLoadingReport ? 'Filtering...' : 'Filter'}
           </Button>
 
-          {/* AI Analysis / Update Analysis Button */}
+          {/* Regenerate (if report exists) or Generate Analysis (if no report yet) */}
           <Button
             variant="contained"
             color="primary"
@@ -468,10 +477,10 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
             }}
           >
             {isAnalyzing
-              ? 'Analyzing...'
+              ? (reportData ? 'Regenerating...' : 'Analyzing...')
               : reportData
-              ? 'Update Analysis'
-              : 'AI Analysis'}
+              ? 'Regenerate'
+              : 'Generate Analysis'}
           </Button>
 
           {reportData && (
@@ -517,15 +526,15 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
               disabled={isAnalyzing}
               sx={{ fontWeight: 600, textTransform: 'none' }}
             >
-              Update Analysis
+              Regenerate
             </Button>
           }
         >
           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-            Report Stale / Outdated
+            Report Outdated / Incomplete
           </Typography>
           <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
-            {freshnessNote || 'New conversations or sales were recorded since this report was generated. Click "Update Analysis" to refresh.'}
+            {freshnessNote || 'New conversations or sales were recorded since this report was generated. Click "Regenerate" to update.'}
           </Typography>
         </Alert>
       )}
@@ -578,7 +587,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
             No Report Generated for {formatDisplayDate(selectedDate)}
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 500, mx: 'auto', mb: 3, lineHeight: 1.6 }}>
-            No saved daily analysis exists for this date. Click <strong>AI Analysis</strong> below to process completed conversations, verified transactions, and staff coaching scorecards.
+            No saved daily report exists for this date. Click <strong>Generate Analysis</strong> below to process completed conversations, verified transactions, and staff coaching scorecards.
           </Typography>
           <Button
             variant="contained"
@@ -594,7 +603,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
               '&:hover': { bgcolor: '#1E293B' },
             }}
           >
-            Generate AI Analysis for {formatDisplayDate(selectedDate)}
+            Generate Analysis for {formatDisplayDate(selectedDate)}
           </Button>
         </Card>
       )}
