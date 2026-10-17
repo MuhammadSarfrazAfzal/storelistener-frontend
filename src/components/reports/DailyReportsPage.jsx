@@ -799,7 +799,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                   {revenueDisplay}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  {verifiedSalesCount} verified sale(s)
+                  {verifiedSalesCount > 0 ? `${verifiedSalesCount} verified sale(s)` : `${reportData?.metrics?.acceptedDealsCount || 0} agreed deal(s)`}
                 </Typography>
               </Card>
             </Grid>
@@ -832,10 +832,10 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                   Avg. Ticket
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary', mt: 0.5 }}>
-                  {reportData?.metrics?.avgTicketDisplay || 'N/A'}
+                  {reportData?.metrics?.avgTicketDisplay !== 'N/A' && reportData?.metrics?.avgTicketDisplay != null ? reportData.metrics.avgTicketDisplay : (reportData?.metrics?.avgAcceptedDealDisplay || 'N/A')}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  per verified sale
+                  {verifiedSalesCount > 0 ? 'per verified sale' : 'per agreed deal'}
                 </Typography>
               </Card>
             </Grid>
@@ -1068,6 +1068,66 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                 </Table>
               </TableContainer>
             </Card>
+          )}
+
+          {/* Product Sales Breakdown & Lost Opportunity Reasons */}
+          {((reportData?.productSalesBreakdown && reportData.productSalesBreakdown.length > 0) || (reportData?.lostReasonsBreakdown && reportData.lostReasonsBreakdown.length > 0)) && (
+            <Grid container spacing={3}>
+              {reportData?.productSalesBreakdown && reportData.productSalesBreakdown.length > 0 && (
+                <Grid item xs={12} md={reportData?.lostReasonsBreakdown?.length > 0 ? 7 : 12}>
+                  <Card sx={{ p: 2.5, borderRadius: 2.5, border: '1px solid #E2E8F0', height: '100%' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
+                      Product-Wise Sales & Discussion Breakdown
+                    </Typography>
+                    <TableContainer sx={{ border: '1px solid #E2E8F0', borderRadius: 1.5 }}>
+                      <Table size="small">
+                        <TableHead sx={{ bgcolor: '#F8FAFC' }}>
+                          <TableRow>
+                            <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>PRODUCT</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem' }}>DISCUSSED</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem' }}>AGREED SALES</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem' }}>TOTAL VALUE</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {reportData.productSalesBreakdown.map((p, idx) => (
+                            <TableRow key={idx} hover>
+                              <TableCell sx={{ fontWeight: 600, fontSize: '0.8125rem' }}>{p.productName}</TableCell>
+                              <TableCell align="center" sx={{ fontSize: '0.8125rem' }}>{p.discussionsCount}</TableCell>
+                              <TableCell align="center" sx={{ fontSize: '0.8125rem', fontWeight: 600, color: p.acceptedCount > 0 ? '#16A34A' : 'text.secondary' }}>
+                                {p.acceptedCount}
+                              </TableCell>
+                              <TableCell align="right" sx={{ fontSize: '0.8125rem', fontWeight: 700, color: p.totalAgreedValue > 0 ? '#16A34A' : 'text.primary' }}>
+                                ${p.totalAgreedValue.toLocaleString()}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Card>
+                </Grid>
+              )}
+              {reportData?.lostReasonsBreakdown && reportData.lostReasonsBreakdown.length > 0 && (
+                <Grid item xs={12} md={reportData?.productSalesBreakdown?.length > 0 ? 5 : 12}>
+                  <Card sx={{ p: 2.5, borderRadius: 2.5, border: '1px solid #E2E8F0', height: '100%' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
+                      Reasons for Lost Opportunities
+                    </Typography>
+                    <Stack spacing={1.5}>
+                      {reportData.lostReasonsBreakdown.map((r, idx) => (
+                        <Box key={idx} sx={{ p: 1.5, bgcolor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#991B1B' }}>
+                            {r.label || r.reason}
+                          </Typography>
+                          <Chip size="small" label={`${r.count} missed`} sx={{ fontWeight: 700, bgcolor: '#DC2626', color: '#FFF', height: 22 }} />
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Card>
+                </Grid>
+              )}
+            </Grid>
           )}
 
           {/* Empty Conversation Case: Honest Empty State */}
@@ -1334,17 +1394,44 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                           </TableCell>
 
                           <TableCell>
-                            <Chip
-                              size="small"
-                              label={c.isSaleVerified ? 'Verified Sale' : c.salesOutcome === 'Won' ? 'Sale (Unverified)' : c.salesOutcome === 'Lost' ? 'No Sale' : 'Follow-up'}
-                              sx={{
-                                fontWeight: 600,
-                                fontSize: '0.75rem',
-                                bgcolor: c.isSaleVerified ? '#DCFCE7' : c.salesOutcome === 'Lost' ? '#FEE2E2' : '#F8FAFC',
-                                color: c.isSaleVerified ? '#16A34A' : c.salesOutcome === 'Lost' ? '#DC2626' : '#475569',
-                                border: '1px solid #E2E8F0',
-                              }}
-                            />
+                            <Stack direction="row" spacing={0.75} alignItems="center">
+                              <Chip
+                                size="small"
+                                label={c.isSaleVerified ? 'Verified Sale' : c.salesOutcome === 'Won' ? 'Agreed Deal' : c.salesOutcome === 'Lost' ? 'No Sale' : 'Follow-up'}
+                                sx={{
+                                  fontWeight: 600,
+                                  fontSize: '0.75rem',
+                                  bgcolor: c.isSaleVerified ? '#DCFCE7' : c.salesOutcome === 'Won' ? '#E0F2FE' : c.salesOutcome === 'Lost' ? '#FEE2E2' : '#F8FAFC',
+                                  color: c.isSaleVerified ? '#16A34A' : c.salesOutcome === 'Won' ? '#0369A1' : c.salesOutcome === 'Lost' ? '#DC2626' : '#475569',
+                                  border: '1px solid #E2E8F0',
+                                }}
+                              />
+                              {c.finalAgreedPrice != null && (
+                                <Chip
+                                  size="small"
+                                  label={`$${c.finalAgreedPrice}`}
+                                  sx={{
+                                    fontWeight: 700,
+                                    fontSize: '0.75rem',
+                                    bgcolor: '#F0FDF4',
+                                    color: '#15803D',
+                                    border: '1px solid #BBF7D0',
+                                  }}
+                                />
+                              )}
+                              {c.salesOutcome === 'Lost' && c.missedOpportunityReason && (
+                                <Chip
+                                  size="small"
+                                  label={c.missedOpportunityReason === 'price_disagreement' ? 'Price Gap' : c.missedOpportunityReason === 'customer_rejection' ? 'Rejected' : c.missedOpportunityReason}
+                                  sx={{
+                                    fontSize: '0.6875rem',
+                                    height: 20,
+                                    bgcolor: '#FEF2F2',
+                                    color: '#B91C1C',
+                                  }}
+                                />
+                              )}
+                            </Stack>
                           </TableCell>
 
                           <TableCell sx={{ textAlign: 'right' }}>
@@ -1526,6 +1613,42 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
         </DialogTitle>
         <Divider />
         <DialogContent sx={{ p: 3, maxHeight: 480, overflowY: 'auto', bgcolor: '#F8FAFC' }}>
+          {activeTranscriptSession && (
+            <Box sx={{ mb: 2.5, p: 2, bgcolor: '#FFFFFF', borderRadius: 2, border: '1px solid #CBD5E1' }}>
+              <Grid container spacing={2}>
+                <Grid item xs={6} sm={3}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>DEAL STATUS</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, textTransform: 'capitalize', color: activeTranscriptSession.salesOutcome === 'Won' ? '#16A34A' : activeTranscriptSession.salesOutcome === 'Lost' ? '#DC2626' : '#2563EB' }}>
+                    {activeTranscriptSession.dealStatus || activeTranscriptSession.salesOutcome || 'Unknown'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>ASKING PRICE</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {activeTranscriptSession.initialAskingPrice != null ? `$${activeTranscriptSession.initialAskingPrice}` : 'Not stated'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>CUSTOMER OFFER</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {activeTranscriptSession.customerOffer != null ? `$${activeTranscriptSession.customerOffer}` : 'None'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>FINAL AGREED PRICE</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: activeTranscriptSession.finalAgreedPrice != null ? '#16A34A' : 'text.secondary' }}>
+                    {activeTranscriptSession.finalAgreedPrice != null ? `$${activeTranscriptSession.finalAgreedPrice}` : (activeTranscriptSession.isPriceVerified ? 'None' : 'Unverified')}
+                  </Typography>
+                </Grid>
+              </Grid>
+              {activeTranscriptSession.outcomeEvidence && (
+                <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary', fontStyle: 'italic' }}>
+                  Evidence: {activeTranscriptSession.outcomeEvidence}
+                </Typography>
+              )}
+            </Box>
+          )}
+
           {activeTranscriptSession?.transcripts && activeTranscriptSession.transcripts.length > 0 ? (
             <Stack spacing={2}>
               {activeTranscriptSession.transcripts.map((t, idx) => {

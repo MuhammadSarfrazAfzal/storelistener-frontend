@@ -1207,6 +1207,7 @@ export function downloadSingleConversationReport({
 export function downloadDailyReportPDF({
   reportData,
   currentUser = null,
+  selectedStoreId = 'all',
 }) {
   if (!reportData) return;
   const doc = new PDFDocument({ orientation: 'portrait', unit: 'mm', format: 'a4' });
