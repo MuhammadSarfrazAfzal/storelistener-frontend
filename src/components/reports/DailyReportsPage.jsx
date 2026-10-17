@@ -413,22 +413,40 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
   const totalConversations = metrics.totalCompleted || 0;
   const verifiedSalesCount = metrics.verifiedSalesCount || 0;
   const verifiedRevenue = metrics.verifiedRevenue;
-  const revenueDisplay = metrics.verifiedRevenueDisplay || (verifiedRevenue != null ? `$${verifiedRevenue}` : '$0');
-  const avgTicketDisplay = metrics.avgTicketDisplay || 'N/A';
-  const missedDisplay = metrics.missedRevenueDisplay || '$0';
+  const agreedSalesValue = metrics.totalAgreedSalesValue || 0;
+  const effectiveRevenueValue = (verifiedRevenue != null && verifiedRevenue > 0)
+    ? verifiedRevenue
+    : (agreedSalesValue > 0 ? agreedSalesValue : (metrics.wonCount > 0 && metrics.totalAgreedSalesValue ? metrics.totalAgreedSalesValue : 0));
+  const revenueDisplay = effectiveRevenueValue > 0
+    ? `$${effectiveRevenueValue.toLocaleString()}`
+    : (metrics.verifiedRevenueDisplay && metrics.verifiedRevenueDisplay !== '$0'
+      ? metrics.verifiedRevenueDisplay
+      : (metrics.totalAgreedSalesDisplay && metrics.totalAgreedSalesDisplay !== '$0' ? metrics.totalAgreedSalesDisplay : '$0'));
+
+  const avgTicketDisplay = (metrics.avgTicketDisplay !== 'N/A' && metrics.avgTicketDisplay != null)
+    ? metrics.avgTicketDisplay
+    : (metrics.avgAcceptedDealDisplay !== 'N/A' && metrics.avgAcceptedDealDisplay != null ? metrics.avgAcceptedDealDisplay : 'N/A');
+
+  const missedOpportunitiesCount = metrics.missedOpportunitiesCount || metrics.lostCount || 0;
+  const totalMissedValue = metrics.totalMissedValue || 0;
+  const missedDisplay = totalMissedValue > 0
+    ? `$${totalMissedValue.toLocaleString()}`
+    : (metrics.missedRevenueDisplay && metrics.missedRevenueDisplay !== '$0' && !metrics.missedRevenueDisplay.includes('unconverted')
+      ? metrics.missedRevenueDisplay
+      : (missedOpportunitiesCount > 0 ? `${missedOpportunitiesCount}` : '0'));
   const lowStockDisplay = metrics.lowStockDisplay || '0';
 
   // Headline & Activity
   const activityLevel = metrics.activityLevel || (totalConversations >= 6 || verifiedSalesCount >= 2 ? 'Active' : totalConversations >= 2 ? 'Moderate' : 'Quiet');
   const headline = metrics.headline || (
-    verifiedRevenue != null && verifiedRevenue > 0
-      ? `${activityLevel} day, $${verifiedRevenue} in sales, ${totalConversations} conversation${totalConversations === 1 ? '' : 's'}`
+    effectiveRevenueValue > 0
+      ? `${activityLevel} day, $${effectiveRevenueValue.toLocaleString()} in sales, ${totalConversations} conversation${totalConversations === 1 ? '' : 's'}`
       : `${activityLevel} day — no sales, ${totalConversations} conversation${totalConversations === 1 ? '' : 's'}`
   );
   const headlineExplanation = metrics.headlineExplanation || (
     totalConversations === 0
       ? 'Quiet day — no conversations recorded and no verified sales.'
-      : `${activityLevel} day with ${totalConversations} recorded customer consultation${totalConversations > 1 ? 's' : ''} across store counters. ${verifiedSalesCount > 0 ? `Confirmed ${verifiedSalesCount} verified sales transaction${verifiedSalesCount > 1 ? 's' : ''} generating ${revenueDisplay}.` : 'No confirmed customer transactions recorded for this business date.'}`
+      : `${activityLevel} day with ${totalConversations} recorded customer consultation${totalConversations > 1 ? 's' : ''} across store counters. ${effectiveRevenueValue > 0 ? `Confirmed ${verifiedSalesCount > 0 ? verifiedSalesCount : (metrics.acceptedDealsCount || metrics.wonCount || 1)} sales transaction${(verifiedSalesCount > 1 || (metrics.acceptedDealsCount || metrics.wonCount || 1) > 1) ? 's' : ''} generating ${revenueDisplay}.` : 'No confirmed customer transactions recorded for this business date.'}`
   );
 
   const aiSummary = reportData?.aiSummary || {};
@@ -850,10 +868,10 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
                   Missed
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 800, color: 'text.primary', mt: 0.5 }}>
-                  {reportData?.metrics?.missedOpportunitiesDisplay || '0'}
+                  {missedDisplay}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  {reportData?.metrics?.missedOpportunitiesCount || 0} unconverted
+                  {missedOpportunitiesCount} unconverted
                 </Typography>
               </Card>
             </Grid>
