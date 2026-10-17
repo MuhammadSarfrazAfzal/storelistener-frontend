@@ -1314,9 +1314,9 @@ export function downloadDailyReportPDF({
   let actionsForTomorrow = Array.isArray(aiSummary.actionableRecommendations) && aiSummary.actionableRecommendations.length > 0
     ? aiSummary.actionableRecommendations
     : [
-        "Ensure staff maintain a welcoming tone and avoid abrupt refusals like 'No, I can't help you.'",
-        'Monitor audio equipment and floor presence to address the high volume of silent/no-speech logs.',
-        'Stand firm on initial pricing or utilize bundled value rather than immediately discounting items.',
+        'Conduct daily morning review of pending customer consultations to prioritize callbacks.',
+        'Coach sales specialists to address trade-in valuation and 0% financing early when price objections emerge.',
+        'Ensure all concluded sales transactions are logged with POS receipt verification.',
       ];
   actionsForTomorrow = actionsForTomorrow.slice(0, 3);
 
@@ -1335,13 +1335,13 @@ export function downloadDailyReportPDF({
     // Text
     doc.setTextColor(30, 41, 59);
     doc.text(text, x + 6.8, y + 3.7);
-    return y + pillH + 4;
+    return y + pillH + 3.8;
   }
 
   // ==========================================
-  // PAGE 1: Header, Headline, KPIs, Summary, Sentiments
+  // PAGE 1: Header, Headline, KPIs, Summary, Sentiments, Actions for Tomorrow
   // ==========================================
-  let y = 15;
+  let y = 14;
 
   // 1. Brand Title Row
   doc.setFont('helvetica', 'bold');
@@ -1354,7 +1354,7 @@ export function downloadDailyReportPDF({
   doc.setTextColor(100, 116, 139); // Slate 500
   doc.text(fullDateStr, pageWidth - 14, y, { align: 'right' });
 
-  y += 8;
+  y += 7.5;
 
   // 2. Large Performance Headline
   doc.setFont('helvetica', 'bold');
@@ -1362,28 +1362,28 @@ export function downloadDailyReportPDF({
   doc.setTextColor(15, 23, 42); // Dark slate #0F172A
   doc.text(headline, 14, y);
 
-  y += 7.5;
+  y += 7.2;
 
   // 3. Subheader Meta Bar (Green bar + pill container)
   const metaBarW = pageWidth - 28;
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, y, metaBarW, 6.8, 1.5, 1.5, 'F');
+  doc.roundedRect(14, y, metaBarW, 6.5, 1.5, 1.5, 'F');
 
   // Left green vertical accent bar
   doc.setFillColor(13, 148, 136);
-  doc.roundedRect(14, y, 2, 6.8, 0.4, 0.4, 'F');
+  doc.roundedRect(14, y, 2, 6.5, 0.4, 0.4, 'F');
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.8);
   doc.setTextColor(71, 85, 105);
-  doc.text(`${storeName}    |    Daily report    |    Generated ${generatedTimestamp}`, 19, y + 4.6);
+  doc.text(`${storeName}    |    Daily report    |    Generated ${generatedTimestamp}`, 19, y + 4.4);
 
-  y += 11;
+  y += 10;
 
   // 4. 6 Metric / KPI Cards (2 Columns x 3 Rows) — Proportional Reference Dimensions
   const colWidth = (pageWidth - 28 - 4.5) / 2; // ~89mm
-  const cardHeight = 21.5;
-  const rowGap = 3.2;
+  const cardHeight = 19.5;
+  const rowGap = 2.8;
   const col1X = 14;
   const col2X = 14 + colWidth + 4.5;
 
@@ -1406,49 +1406,49 @@ export function downloadDailyReportPDF({
 
     // Card 1
     doc.setFillColor(...card1.bg);
-    doc.roundedRect(col1X, rowY, colWidth, cardHeight, 2.8, 2.8, 'F');
+    doc.roundedRect(col1X, rowY, colWidth, cardHeight, 2.6, 2.6, 'F');
 
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text(card1.label, col1X + 5, rowY + 5);
+    doc.text(card1.label, col1X + 5, rowY + 4.8);
 
-    doc.setFontSize(19);
-    doc.text(card1.val, col1X + 5, rowY + 13.8);
+    doc.setFontSize(18);
+    doc.text(card1.val, col1X + 5, rowY + 12.6);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7.2);
     doc.setTextColor(241, 245, 249);
-    doc.text(card1.sub, col1X + 5, rowY + 18.5);
+    doc.text(card1.sub, col1X + 5, rowY + 16.8);
 
     // Card 2
     doc.setFillColor(...card2.bg);
-    doc.roundedRect(col2X, rowY, colWidth, cardHeight, 2.8, 2.8, 'F');
+    doc.roundedRect(col2X, rowY, colWidth, cardHeight, 2.6, 2.6, 'F');
 
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text(card2.label, col2X + 5, rowY + 5);
+    doc.text(card2.label, col2X + 5, rowY + 4.8);
 
-    doc.setFontSize(19);
-    doc.text(card2.val, col2X + 5, rowY + 13.8);
+    doc.setFontSize(18);
+    doc.text(card2.val, col2X + 5, rowY + 12.6);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7.2);
     doc.setTextColor(241, 245, 249);
-    doc.text(card2.sub, col2X + 5, rowY + 18.5);
+    doc.text(card2.sub, col2X + 5, rowY + 16.8);
   }
 
-  y += (3 * (cardHeight + rowGap)) + 7;
+  y += (3 * (cardHeight + rowGap)) + 5.5;
 
-  // 5. Summary Paragraph (Well spaced)
+  // 5. Summary Paragraph
   const summaryText = `Today the shop saw ${totalConversations} customer(s). The total revenue stayed at ${revenueDisplay}. Compliance remained perfect at 100% and the customer interaction was predominantly ${dominantSentiment.toLowerCase()}.`;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.2);
+  doc.setFontSize(9);
   doc.setTextColor(51, 65, 85);
   const summaryLines = doc.splitTextToSize(summaryText, pageWidth - 28);
   doc.text(summaryLines, 14, y);
-  y += (summaryLines.length * 4.6) + 6.5;
+  y += (summaryLines.length * 4.4) + 5;
 
   // 6. KEY POINTS Section
   y = drawPillBadge(14, y, [13, 148, 136], 'KEY POINTS');
@@ -1458,14 +1458,14 @@ export function downloadDailyReportPDF({
     doc.circle(16, y - 0.8, 0.9, 'F');
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
+    doc.setFontSize(8.2);
     doc.setTextColor(51, 65, 85);
     const ptLines = doc.splitTextToSize(pt, pageWidth - 36);
     doc.text(ptLines, 20, y);
-    y += (ptLines.length * 4.2) + 2.5;
+    y += (ptLines.length * 4.0) + 2.0;
   });
 
-  y += 5;
+  y += 4;
 
   // 7. CUSTOMER SENTIMENT Section
   y = drawPillBadge(14, y, [147, 51, 234], 'CUSTOMER SENTIMENT');
@@ -1473,39 +1473,34 @@ export function downloadDailyReportPDF({
   // Percentage & Sentiment Bar
   const meterY = y + 1;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
+  doc.setFontSize(14.5);
   doc.setTextColor(15, 23, 42);
-  doc.text(`${dominantPercentage}%`, 14, meterY + 4);
+  doc.text(`${dominantPercentage}%`, 14, meterY + 3.8);
 
   doc.setFillColor(147, 51, 234);
-  doc.circle(38, meterY + 2, 1.2, 'F');
+  doc.circle(38, meterY + 1.8, 1.2, 'F');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(8.2);
   doc.setTextColor(30, 41, 59);
-  doc.text(dominantSentiment, 41, meterY + 3);
+  doc.text(dominantSentiment, 41, meterY + 2.8);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(8.2);
   doc.setTextColor(147, 51, 234);
-  doc.text(`${dominantPercentage}%`, pageWidth - 14, meterY + 3, { align: 'right' });
+  doc.text(`${dominantPercentage}%`, pageWidth - 14, meterY + 2.8, { align: 'right' });
 
   // Progress line
   const trackW = pageWidth - 28;
   const fillW = trackW * (dominantPercentage / 100);
   doc.setFillColor(237, 233, 254);
-  doc.roundedRect(14, meterY + 6.5, trackW, 2.8, 1.4, 1.4, 'F');
+  doc.roundedRect(14, meterY + 6.2, trackW, 2.6, 1.3, 1.3, 'F');
 
   doc.setFillColor(147, 51, 234);
-  doc.roundedRect(14, meterY + 6.5, fillW, 2.8, 1.4, 1.4, 'F');
+  doc.roundedRect(14, meterY + 6.2, fillW, 2.6, 1.3, 1.3, 'F');
 
-  // ==========================================
-  // PAGE 2: Actions for Tomorrow & Conversations 1 to 3
-  // ==========================================
-  doc.addPage();
-  y = 15;
-
-  // 8. ACTIONS FOR TOMORROW Section
+  // 8. ACTIONS FOR TOMORROW Section (Directly following CUSTOMER SENTIMENT without page break)
+  y = meterY + 14;
   y = drawPillBadge(14, y, [13, 148, 136], 'ACTIONS FOR TOMORROW');
 
   actionsForTomorrow.forEach((action, idx) => {
@@ -1523,10 +1518,14 @@ export function downloadDailyReportPDF({
     doc.setFontSize(8.2);
     const actionLines = doc.splitTextToSize(action, pageWidth - 36);
     doc.text(actionLines, 22, y + 0.6);
-    y += Math.max(6, actionLines.length * 3.8 + 2.5);
+    y += Math.max(5.8, actionLines.length * 3.8 + 2.2);
   });
 
-  y += 7.5;
+  // ==========================================
+  // PAGE 2: Conversations & Transcripts (Interactions 1 to 3)
+  // ==========================================
+  doc.addPage();
+  y = 14;
 
   // 9. CONVERSATIONS & TRANSCRIPTS Section
   y = drawPillBadge(14, y, [37, 99, 235], 'CONVERSATIONS & TRANSCRIPTS');
