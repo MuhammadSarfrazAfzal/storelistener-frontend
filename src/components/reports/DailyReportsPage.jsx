@@ -30,6 +30,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TableFooter,
   TextField,
   CircularProgress,
   Dialog,
@@ -177,7 +178,7 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
       const params = new URLSearchParams({
         filterType: 'single',
         date: targetDate,
-        ...(targetStore && targetStore !== 'all' ? { store: targetStore } : {}),
+        store: targetStore || 'all',
       });
 
       const res = await fetch(`${BACKEND_URL}/api/reports/daily?${params.toString()}`, {
@@ -496,6 +497,9 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
               onChange={(e) => {
                 const nextStore = e.target.value;
                 setSelectedStore(nextStore);
+                setReportData(null);
+                setNoSavedReportFound(false);
+                setHasSearched(false);
                 handleFilterReport(selectedDate, nextStore);
               }}
               sx={{ borderRadius: 1.5 }}
@@ -872,6 +876,199 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
               </Card>
             </Grid>
           </Grid>
+
+          {/* Store-Level Breakdown Table */}
+          {reportData?.storeBreakdown && reportData.storeBreakdown.length > 0 && (
+            <Card sx={{ p: 3, borderRadius: 2.5, border: '1px solid #E2E8F0', bgcolor: 'background.paper', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <StoreIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.05rem', color: 'text.primary' }}>
+                      Store-Level Performance Breakdown
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      Reconciled conversation counts, verified revenue, and analysis status across retail branches.
+                    </Typography>
+                  </Box>
+                </Stack>
+                {selectedStore !== 'all' && (
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={() => {
+                      setSelectedStore('all');
+                      handleFilterReport(selectedDate, 'all');
+                    }}
+                    sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.8125rem' }}
+                  >
+                    View All Stores
+                  </Button>
+                )}
+              </Stack>
+
+              <TableContainer sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}>
+                <Table size="small">
+                  <TableHead sx={{ bgcolor: '#F8FAFC' }}>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', py: 1.25 }}>Branch / Store</TableCell>
+                      <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', py: 1.25 }}>Location & Manager</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', py: 1.25 }}>Conversations</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', py: 1.25 }}>Analysis Status</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', py: 1.25 }}>Won / Lost</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', py: 1.25 }}>Verified Sales</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', py: 1.25 }}>Verified Revenue</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', py: 1.25 }}>Conv. Rate</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#475569', textTransform: 'uppercase', py: 1.25 }}>Action</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {reportData.storeBreakdown.map((sb) => {
+                      const isRowSelected = selectedStore === sb.storeCode;
+                      return (
+                        <TableRow
+                          key={sb.storeCode}
+                          hover
+                          sx={{
+                            bgcolor: isRowSelected ? '#F0FDF4' : 'inherit',
+                            '&:last-child td, &:last-child th': { border: 0 },
+                          }}
+                        >
+                          <TableCell sx={{ py: 1.25 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                              {sb.storeName}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace' }}>
+                              {sb.storeCode}
+                            </Typography>
+                          </TableCell>
+                          <TableCell sx={{ py: 1.25 }}>
+                            <Typography variant="body2" sx={{ color: 'text.primary', fontSize: '0.8125rem' }}>
+                              {sb.location || 'Store Branch'}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                              Manager: {sb.manager || 'N/A'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="center" sx={{ py: 1.25 }}>
+                            <Chip
+                              size="small"
+                              label={`${sb.totalConversations} session${sb.totalConversations === 1 ? '' : 's'}`}
+                              sx={{
+                                fontWeight: 700,
+                                fontSize: '0.75rem',
+                                bgcolor: sb.totalConversations > 0 ? '#DBEAFE' : '#F1F5F9',
+                                color: sb.totalConversations > 0 ? '#1E40AF' : '#64748B',
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell align="center" sx={{ py: 1.25 }}>
+                            <Stack direction="row" spacing={0.5} justifyContent="center" alignItems="center">
+                              <Chip
+                                size="small"
+                                label={`${sb.analyzedCount} Analyzed`}
+                                sx={{
+                                  fontSize: '0.6875rem',
+                                  height: 20,
+                                  fontWeight: 600,
+                                  bgcolor: sb.analyzedCount > 0 ? '#DCFCE7' : '#F1F5F9',
+                                  color: sb.analyzedCount > 0 ? '#166534' : '#64748B',
+                                }}
+                              />
+                              {sb.pendingCount > 0 && (
+                                <Chip
+                                  size="small"
+                                  label={`${sb.pendingCount} Pending`}
+                                  sx={{ fontSize: '0.6875rem', height: 20, bgcolor: '#FEF3C7', color: '#92400E' }}
+                                />
+                              )}
+                              {sb.failedCount > 0 && (
+                                <Chip
+                                  size="small"
+                                  label={`${sb.failedCount} Failed`}
+                                  sx={{ fontSize: '0.6875rem', height: 20, bgcolor: '#FEE2E2', color: '#991B1B' }}
+                                />
+                              )}
+                            </Stack>
+                          </TableCell>
+                          <TableCell align="center" sx={{ py: 1.25, fontSize: '0.8125rem' }}>
+                            <Typography variant="body2" component="span" sx={{ color: '#16A34A', fontWeight: 600 }}>
+                              {sb.wonCount}W
+                            </Typography>
+                            {' / '}
+                            <Typography variant="body2" component="span" sx={{ color: '#DC2626', fontWeight: 600 }}>
+                              {sb.lostCount}L
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="center" sx={{ py: 1.25, fontWeight: 700, fontSize: '0.875rem' }}>
+                            {sb.verifiedSalesCount}
+                          </TableCell>
+                          <TableCell align="right" sx={{ py: 1.25, fontWeight: 700, fontSize: '0.875rem', color: sb.verifiedRevenue > 0 ? '#16A34A' : 'text.primary' }}>
+                            {sb.verifiedRevenueDisplay || '$0'}
+                          </TableCell>
+                          <TableCell align="right" sx={{ py: 1.25, fontWeight: 600, fontSize: '0.875rem' }}>
+                            {sb.conversionRate}%
+                          </TableCell>
+                          <TableCell align="center" sx={{ py: 1.25 }}>
+                            <Button
+                              size="small"
+                              variant={isRowSelected ? 'contained' : 'outlined'}
+                              color={isRowSelected ? 'success' : 'inherit'}
+                              onClick={() => {
+                                const target = isRowSelected ? 'all' : sb.storeCode;
+                                setSelectedStore(target);
+                                handleFilterReport(selectedDate, target);
+                              }}
+                              sx={{
+                                textTransform: 'none',
+                                fontSize: '0.6875rem',
+                                py: 0.25,
+                                px: 1,
+                                minWidth: 64,
+                                borderRadius: 1.5,
+                              }}
+                            >
+                              {isRowSelected ? 'Selected' : 'Filter'}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                  <TableFooter sx={{ bgcolor: '#F8FAFC' }}>
+                    <TableRow>
+                      <TableCell colSpan={2} sx={{ fontWeight: 800, fontSize: '0.8125rem', color: '#0F172A', py: 1.5 }}>
+                        Total Reconciled (All Branches)
+                      </TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 800, fontSize: '0.8125rem', color: '#0F172A', py: 1.5 }}>
+                        {totalConversations}
+                      </TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', color: '#166534', py: 1.5 }}>
+                        {reportData?.metrics?.completedAnalysisCount || 0} Analyzed
+                      </TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.8125rem', py: 1.5 }}>
+                        {reportData?.metrics?.wonCount || 0}W / {reportData?.metrics?.lostCount || 0}L
+                      </TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 800, fontSize: '0.8125rem', color: '#0F172A', py: 1.5 }}>
+                        {verifiedSalesCount}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 800, fontSize: '0.875rem', color: '#16A34A', py: 1.5 }}>
+                        {revenueDisplay}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 800, fontSize: '0.8125rem', color: '#0F172A', py: 1.5 }}>
+                        {reportData?.metrics?.conversionRate || 0}%
+                      </TableCell>
+                      <TableCell align="center" sx={{ py: 1.5 }}>
+                        <Chip size="small" label="Reconciled" color="success" sx={{ fontSize: '0.6875rem', height: 20, fontWeight: 700 }} />
+                      </TableCell>
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+              </TableContainer>
+            </Card>
+          )}
 
           {/* Empty Conversation Case: Honest Empty State */}
           {totalConversations === 0 && (

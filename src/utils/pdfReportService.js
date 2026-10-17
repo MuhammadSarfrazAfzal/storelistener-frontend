@@ -1240,7 +1240,8 @@ export function downloadDailyReportPDF({
   );
 
   // Store name & dates
-  const storeName = activeFilters.store && activeFilters.store !== 'all' ? activeFilters.store : (currentUser?.storeCode || 'lahore');
+  const isAllStores = !activeFilters.store || activeFilters.store === 'all' || selectedStoreId === 'all';
+  const storeName = isAllStores ? 'All Retail Branches' : (activeFilters.store || selectedStoreId || currentUser?.storeCode || 'Store Branch');
   const fullDateStr = (() => {
     try {
       const parts = String(reportData.date || dateLabel).split('-');
@@ -1511,6 +1512,42 @@ export function downloadDailyReportPDF({
   });
 
   y += 3;
+
+  // 8B. STORE PERFORMANCE BREAKDOWN (Rendered when All Stores or multi-branch report)
+  const storeBreakdown = reportData.storeBreakdown || [];
+  if (isAllStores && storeBreakdown.length > 0) {
+    y = drawPillBadge(14, y, [13, 148, 136], 'STORE PERFORMANCE BREAKDOWN');
+    autoTable(doc, {
+      startY: y,
+      head: [['Store / Branch', 'Location & Manager', 'Conversations', 'Analyzed', 'Won', 'Sales Won', 'Revenue', 'Conv. Rate']],
+      body: storeBreakdown.map((sb) => [
+        `${sb.storeName || sb.storeCode} (${sb.storeCode})`,
+        `${sb.location || 'Branch'} · ${sb.manager || 'Manager'}`,
+        String(sb.totalConversations || 0),
+        String(sb.analyzedCount || 0),
+        String(sb.wonCount || 0),
+        String(sb.verifiedSalesCount || 0),
+        sb.verifiedRevenueDisplay || '$0',
+        `${sb.conversionRate || 0}%`,
+      ]),
+      foot: [[
+        'Total Reconciled',
+        'All Authorized Branches',
+        String(totalConversations),
+        String(metrics.completedAnalysisCount || 0),
+        String(metrics.wonCount || 0),
+        String(verifiedSalesCount),
+        revenueDisplay,
+        `${metrics.conversionRate || 0}%`,
+      ]],
+      theme: 'striped',
+      headStyles: { fillColor: [13, 148, 136], textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold' },
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontSize: 7, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 6.8, textColor: [51, 65, 85] },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc.lastAutoTable?.finalY || y) + 5;
+  }
 
   // 9. CONVERSATIONS & TRANSCRIPTS Section
   y = drawPillBadge(14, y, [37, 99, 235], 'CONVERSATIONS & TRANSCRIPTS');
