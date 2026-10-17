@@ -253,15 +253,7 @@ export default function DashboardOverview({ onNavigate, currentUser, token }) {
 
         {/* Quick Navigation Shortcuts */}
         <Stack direction="row" spacing={1.5}>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<PdfIcon />}
-            onClick={handleDownloadPdf}
-            sx={{ fontWeight: 600, fontSize: '0.8125rem' }}
-          >
-            Download PDF
-          </Button>
+
           <Button
             size="small"
             variant="outlined"

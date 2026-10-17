@@ -485,28 +485,8 @@ export default function LiveMonitoringPage({ currentUser, token }) {
             </Select>
           </FormControl>
 
-          {/* PDF Export */}
-          <Button
-            size="medium"
-            variant="outlined"
-            startIcon={<PdfIcon />}
-            onClick={() => {
-              try {
-                downloadLiveMonitoringReport({
-                  stores,
-                  conversationsByStore: { [selectedStore]: completedConversations },
-                  selectedStoreId: selectedStore,
-                  currentUser,
-                });
-              } catch (err) {
-                console.error('PDF export error:', err);
-                alert('Failed to generate Live Monitoring PDF report.');
-              }
-            }}
-            sx={{ fontWeight: 700, borderRadius: 2, textTransform: 'none' }}
-          >
-            Export PDF
-          </Button>
+
+
         </Stack>
       </Stack>
 
