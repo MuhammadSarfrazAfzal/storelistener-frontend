@@ -1540,16 +1540,7 @@ export function downloadDailyReportPDF({
     y += itemH;
   });
 
-  // ==========================================
-  // PAGE 2: Conversations & Transcripts (Interactions 1 to 3)
-  // ==========================================
-  doc.addPage();
-  y = 14;
-
-  // 9. CONVERSATIONS & TRANSCRIPTS Section
-  y = drawPillBadge(14, y, [37, 99, 235], 'CONVERSATIONS & TRANSCRIPTS');
-
-  // Standard reference coaching notes verbatim
+  // 9. CONVERSATIONS & TRANSCRIPTS Section (Flows continuously in remaining page space)
   const referenceCoachingNotes = [
     'Avoid starting conversations with outright refusals to help customers. Always greet shoppers professionally and offer assistance.',
     'No speech detected during this interaction. Check audio sensor functionality and ensure staff are actively engaging people on the floor.',
@@ -1559,11 +1550,31 @@ export function downloadDailyReportPDF({
     'No speech detected. Maintain high engagement levels even during late-shift hours.',
   ];
 
+  // Calculate height needed for the heading + first conversation item (to prevent orphan heading)
+  const firstConv = (conversations && conversations.length > 0) ? conversations[0] : null;
+  let firstCardEstH = 26;
+  if (firstConv) {
+    const summaryEstLines = doc.splitTextToSize(`"${firstConv.summary || firstConv.transcriptSummary || 'Conversation summary'}"`, pageWidth - 28);
+    const coachEstLines = doc.splitTextToSize(`Coaching: ${referenceCoachingNotes[0]}`, pageWidth - 36);
+    firstCardEstH = 5.2 + (summaryEstLines.length * 3.4) + 2.2 + (coachEstLines.length * 3.6 + 4.8) + 4.5;
+  }
+
+  const requiredForConversationsHeading = 12 + firstCardEstH;
+  if (y + requiredForConversationsHeading > pageHeight - 18) {
+    doc.addPage();
+    y = 14;
+  } else {
+    y += 5.5; // Natural visual gap between sections on the same page
+  }
+
+  y = drawPillBadge(14, y, [37, 99, 235], 'CONVERSATIONS & TRANSCRIPTS');
+
   if (!conversations || conversations.length === 0) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(100, 116, 139);
     doc.text('Quiet day — no conversations recorded for this calendar date.', 14, y + 3);
+    y += 6;
   } else {
     conversations.forEach((conv, index) => {
       // Format metadata
@@ -1601,12 +1612,12 @@ export function downloadDailyReportPDF({
       const fullCoachingStr = `Coaching: ${coachingText}`;
       const cLines = doc.splitTextToSize(fullCoachingStr, pageWidth - 36);
       const coachingBoxH = (cLines.length * 3.6) + 4.8;
-      const cardTotalH = 5 + (tLines.length * 3.4) + 2.5 + coachingBoxH + 5.5;
+      const cardTotalH = 5 + (tLines.length * 3.4) + 2.2 + coachingBoxH + 4.5;
 
-      // Clean pagination: exactly 3 interactions on Page 2, interactions 4+ on Page 3
-      if (index === 3 || (index > 3 && (index % 3 === 0 || y + cardTotalH > pageHeight - 20))) {
+      // PURE CONTINUOUS FLOW: Move to new page ONLY when this individual card genuinely overflows the page boundary
+      if (y + cardTotalH > pageHeight - 18) {
         doc.addPage();
-        y = 15;
+        y = 14;
       }
 
       // Conversation Header Row: Purple badge with white number
