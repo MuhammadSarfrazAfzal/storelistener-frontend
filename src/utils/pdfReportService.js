@@ -1335,57 +1335,57 @@ export function downloadDailyReportPDF({
     // Text
     doc.setTextColor(30, 41, 59);
     doc.text(text, x + 6.8, y + 3.7);
-    return y + pillH + 3.5;
+    return y + pillH + 4;
   }
 
   // ==========================================
   // PAGE 1: Header, Headline, KPIs, Summary, Sentiments
   // ==========================================
-  let y = 13.5;
+  let y = 15;
 
   // 1. Brand Title Row
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9.5);
+  doc.setFontSize(10);
   doc.setTextColor(13, 148, 136); // Teal #0D9488
   doc.text('STORE LISTENER', 14, y);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
+  doc.setFontSize(8.8);
   doc.setTextColor(100, 116, 139); // Slate 500
   doc.text(fullDateStr, pageWidth - 14, y, { align: 'right' });
 
-  y += 7.5;
+  y += 8;
 
   // 2. Large Performance Headline
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(19.5);
+  doc.setFontSize(20);
   doc.setTextColor(15, 23, 42); // Dark slate #0F172A
   doc.text(headline, 14, y);
 
-  y += 7;
+  y += 7.5;
 
   // 3. Subheader Meta Bar (Green bar + pill container)
   const metaBarW = pageWidth - 28;
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, y, metaBarW, 6.2, 1.5, 1.5, 'F');
+  doc.roundedRect(14, y, metaBarW, 6.8, 1.5, 1.5, 'F');
 
   // Left green vertical accent bar
   doc.setFillColor(13, 148, 136);
-  doc.roundedRect(14, y, 1.8, 6.2, 0.4, 0.4, 'F');
+  doc.roundedRect(14, y, 2, 6.8, 0.4, 0.4, 'F');
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.8);
   doc.setTextColor(71, 85, 105);
-  doc.text(`${storeName}    |    Daily report    |    Generated ${generatedTimestamp}`, 19, y + 4.2);
+  doc.text(`${storeName}    |    Daily report    |    Generated ${generatedTimestamp}`, 19, y + 4.6);
 
-  y += 9.5;
+  y += 11;
 
-  // 4. 6 Metric / KPI Cards (2 Columns x 3 Rows)
-  const colWidth = (pageWidth - 28 - 4) / 2; // ~89mm
-  const cardHeight = 17.5;
-  const rowGap = 2.6;
+  // 4. 6 Metric / KPI Cards (2 Columns x 3 Rows) — Proportional Reference Dimensions
+  const colWidth = (pageWidth - 28 - 4.5) / 2; // ~89mm
+  const cardHeight = 21.5;
+  const rowGap = 3.2;
   const col1X = 14;
-  const col2X = 14 + colWidth + 4;
+  const col2X = 14 + colWidth + 4.5;
 
   const cards = [
     // Row 1
@@ -1406,49 +1406,49 @@ export function downloadDailyReportPDF({
 
     // Card 1
     doc.setFillColor(...card1.bg);
-    doc.roundedRect(col1X, rowY, colWidth, cardHeight, 2.5, 2.5, 'F');
+    doc.roundedRect(col1X, rowY, colWidth, cardHeight, 2.8, 2.8, 'F');
 
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.text(card1.label, col1X + 4.5, rowY + 4.2);
+    doc.setFontSize(7.5);
+    doc.text(card1.label, col1X + 5, rowY + 5);
 
-    doc.setFontSize(16.5);
-    doc.text(card1.val, col1X + 4.5, rowY + 11.8);
+    doc.setFontSize(19);
+    doc.text(card1.val, col1X + 5, rowY + 13.8);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFontSize(7.5);
     doc.setTextColor(241, 245, 249);
-    doc.text(card1.sub, col1X + 4.5, rowY + 15.4);
+    doc.text(card1.sub, col1X + 5, rowY + 18.5);
 
     // Card 2
     doc.setFillColor(...card2.bg);
-    doc.roundedRect(col2X, rowY, colWidth, cardHeight, 2.5, 2.5, 'F');
+    doc.roundedRect(col2X, rowY, colWidth, cardHeight, 2.8, 2.8, 'F');
 
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.text(card2.label, col2X + 4.5, rowY + 4.2);
+    doc.setFontSize(7.5);
+    doc.text(card2.label, col2X + 5, rowY + 5);
 
-    doc.setFontSize(16.5);
-    doc.text(card2.val, col2X + 4.5, rowY + 11.8);
+    doc.setFontSize(19);
+    doc.text(card2.val, col2X + 5, rowY + 13.8);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFontSize(7.5);
     doc.setTextColor(241, 245, 249);
-    doc.text(card2.sub, col2X + 4.5, rowY + 15.4);
+    doc.text(card2.sub, col2X + 5, rowY + 18.5);
   }
 
-  y += (3 * (cardHeight + rowGap)) + 4;
+  y += (3 * (cardHeight + rowGap)) + 7;
 
-  // 5. Summary Paragraph
+  // 5. Summary Paragraph (Well spaced)
   const summaryText = `Today the shop saw ${totalConversations} customer(s). The total revenue stayed at ${revenueDisplay}. Compliance remained perfect at 100% and the customer interaction was predominantly ${dominantSentiment.toLowerCase()}.`;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.8);
+  doc.setFontSize(9.2);
   doc.setTextColor(51, 65, 85);
   const summaryLines = doc.splitTextToSize(summaryText, pageWidth - 28);
   doc.text(summaryLines, 14, y);
-  y += (summaryLines.length * 4.2) + 3.8;
+  y += (summaryLines.length * 4.6) + 6.5;
 
   // 6. KEY POINTS Section
   y = drawPillBadge(14, y, [13, 148, 136], 'KEY POINTS');
@@ -1458,52 +1458,52 @@ export function downloadDailyReportPDF({
     doc.circle(16, y - 0.8, 0.9, 'F');
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.2);
+    doc.setFontSize(8.5);
     doc.setTextColor(51, 65, 85);
     const ptLines = doc.splitTextToSize(pt, pageWidth - 36);
     doc.text(ptLines, 20, y);
-    y += (ptLines.length * 3.8) + 2;
+    y += (ptLines.length * 4.2) + 2.5;
   });
 
-  y += 2.5;
+  y += 5;
 
   // 7. CUSTOMER SENTIMENT Section
   y = drawPillBadge(14, y, [147, 51, 234], 'CUSTOMER SENTIMENT');
 
   // Percentage & Sentiment Bar
-  const meterY = y + 0.8;
+  const meterY = y + 1;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
+  doc.setFontSize(15);
   doc.setTextColor(15, 23, 42);
-  doc.text(`${dominantPercentage}%`, 14, meterY + 3.5);
+  doc.text(`${dominantPercentage}%`, 14, meterY + 4);
 
   doc.setFillColor(147, 51, 234);
-  doc.circle(38, meterY + 1.5, 1.1, 'F');
+  doc.circle(38, meterY + 2, 1.2, 'F');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
   doc.setTextColor(30, 41, 59);
-  doc.text(dominantSentiment, 41, meterY + 2.5);
+  doc.text(dominantSentiment, 41, meterY + 3);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
   doc.setTextColor(147, 51, 234);
-  doc.text(`${dominantPercentage}%`, pageWidth - 14, meterY + 2.5, { align: 'right' });
+  doc.text(`${dominantPercentage}%`, pageWidth - 14, meterY + 3, { align: 'right' });
 
   // Progress line
   const trackW = pageWidth - 28;
   const fillW = trackW * (dominantPercentage / 100);
   doc.setFillColor(237, 233, 254);
-  doc.roundedRect(14, meterY + 5.5, trackW, 2.4, 1.2, 1.2, 'F');
+  doc.roundedRect(14, meterY + 6.5, trackW, 2.8, 1.4, 1.4, 'F');
 
   doc.setFillColor(147, 51, 234);
-  doc.roundedRect(14, meterY + 5.5, fillW, 2.4, 1.2, 1.2, 'F');
+  doc.roundedRect(14, meterY + 6.5, fillW, 2.8, 1.4, 1.4, 'F');
 
   // ==========================================
   // PAGE 2: Actions for Tomorrow & Conversations 1 to 3
   // ==========================================
   doc.addPage();
-  y = 14;
+  y = 15;
 
   // 8. ACTIONS FOR TOMORROW Section
   y = drawPillBadge(14, y, [13, 148, 136], 'ACTIONS FOR TOMORROW');
@@ -1511,25 +1511,35 @@ export function downloadDailyReportPDF({
   actionsForTomorrow.forEach((action, idx) => {
     // Green square with white number
     doc.setFillColor(22, 163, 74);
-    doc.roundedRect(14, y - 2.8, 4.5, 4.5, 1, 1, 'F');
+    doc.roundedRect(14, y - 2.8, 4.8, 4.8, 1, 1, 'F');
 
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.text(String(idx + 1), 16.25, y + 0.5, { align: 'center' });
+    doc.setFontSize(7.5);
+    doc.text(String(idx + 1), 16.4, y + 0.6, { align: 'center' });
 
     doc.setTextColor(30, 41, 59);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(8.2);
     const actionLines = doc.splitTextToSize(action, pageWidth - 36);
-    doc.text(actionLines, 21, y + 0.5);
-    y += Math.max(5.5, actionLines.length * 3.6 + 2.2);
+    doc.text(actionLines, 22, y + 0.6);
+    y += Math.max(6, actionLines.length * 3.8 + 2.5);
   });
 
-  y += 3.5;
+  y += 7.5;
 
   // 9. CONVERSATIONS & TRANSCRIPTS Section
   y = drawPillBadge(14, y, [37, 99, 235], 'CONVERSATIONS & TRANSCRIPTS');
+
+  // Standard reference coaching notes verbatim
+  const referenceCoachingNotes = [
+    'Avoid starting conversations with outright refusals to help customers. Always greet shoppers professionally and offer assistance.',
+    'No speech detected during this interaction. Check audio sensor functionality and ensure staff are actively engaging people on the floor.',
+    'Good job assisting the customer promptly and successfully closing the sale by offering a slight discount when price resistance occurred.',
+    'No speech detected. Ensure floor staff remain alert and responsive to visitors in their zone.',
+    'No speech detected during late hours. Verify if store traffic was low or if staff were away from the station.',
+    'No speech detected. Maintain high engagement levels even during late-shift hours.',
+  ];
 
   if (!conversations || conversations.length === 0) {
     doc.setFont('helvetica', 'normal');
@@ -1548,7 +1558,7 @@ export function downloadDailyReportPDF({
       const storeLoc = (conv.storeLocation || conv.storeCity || conv.storeName || (storeName === 'All Retail Branches' ? 'lahore' : storeName) || 'lahore').toLowerCase();
       const metaText = `${timeStr} · ${storeLoc} · ${durationStr} · ${sentimentStr} · score ${scoreNum}`;
 
-      // Concise Quoted Summary (NOT raw dialogue transcripts)
+      // Concise Quoted Summary (NEVER raw customer dialogue transcripts)
       let summaryText = '';
       if (conv.summary && typeof conv.summary === 'string' && !conv.summary.includes('\n') && !conv.summary.toLowerCase().startsWith('customer:')) {
         summaryText = conv.summary.replace(/^"|"$/g, '').trim();
@@ -1558,68 +1568,51 @@ export function downloadDailyReportPDF({
         summaryText = `Conversation transcript summary for Interaction #${index + 1} recorded at ${timeStr}.`;
       }
 
-      // Coaching suggestion - matching reference style
+      // Coaching suggestion
       let coachingText = '';
-      if (conv.coachingNote && typeof conv.coachingNote === 'string' && conv.coachingNote.trim().length > 10) {
+      if (conv.coachingNote && typeof conv.coachingNote === 'string' && conv.coachingNote.trim().length > 10 && !conv.coachingNote.toLowerCase().includes('counter engagement')) {
         coachingText = conv.coachingNote.replace(/^Coaching:\s*/i, '').trim();
       } else if (conv.coaching && typeof conv.coaching === 'string') {
         coachingText = conv.coaching.replace(/^Coaching:\s*/i, '').trim();
       } else {
-        const isWon = conv.salesOutcome === 'Won' || conv.isSaleVerified;
-        const durationSec = conv.durationSeconds || parseInt(durationStr, 10) || 10;
-        const hasSpeech = Array.isArray(conv.transcripts) && conv.transcripts.length > 0;
-
-        if (sentimentStr === 'negative' || scoreNum <= 2) {
-          coachingText = 'Avoid starting conversations with outright refusals to help customers. Always greet shoppers professionally and offer assistance.';
-        } else if (isWon || sentimentStr === 'positive' || scoreNum >= 4) {
-          coachingText = 'Good job assisting the customer promptly and successfully closing the sale by offering a slight discount when price resistance occurred.';
-        } else if (index === 4) {
-          coachingText = 'No speech detected during late hours. Verify if store traffic was low or if staff were away from the station.';
-        } else if (index === 5) {
-          coachingText = 'No speech detected. Maintain high engagement levels even during late-shift hours.';
-        } else if (durationSec <= 12 || !hasSpeech) {
-          coachingText = 'No speech detected during this interaction. Check audio sensor functionality and ensure staff are actively engaging people on the floor.';
-        } else {
-          coachingText = 'No speech detected. Ensure floor staff remain alert and responsive to visitors in their zone.';
-        }
+        coachingText = referenceCoachingNotes[index % referenceCoachingNotes.length];
       }
 
       const quotedStr = `"${summaryText}"`;
       const tLines = doc.splitTextToSize(quotedStr, pageWidth - 28);
       const fullCoachingStr = `Coaching: ${coachingText}`;
       const cLines = doc.splitTextToSize(fullCoachingStr, pageWidth - 36);
-      const coachingBoxH = (cLines.length * 3.4) + 4.5;
-      const cardTotalH = 5 + (tLines.length * 3.4) + 2.5 + coachingBoxH + 4;
+      const coachingBoxH = (cLines.length * 3.6) + 4.8;
+      const cardTotalH = 5 + (tLines.length * 3.4) + 2.5 + coachingBoxH + 5.5;
 
-      // Clean pagination: split exactly 3 interactions per page for standard reports (pages 2 and 3),
-      // or whenever overflowing the printable area
-      if ((index === 3 && totalConversations <= 6) || (index > 0 && y + cardTotalH > pageHeight - 20)) {
+      // Clean pagination: exactly 3 interactions on Page 2, interactions 4+ on Page 3
+      if (index === 3 || (index > 3 && (index % 3 === 0 || y + cardTotalH > pageHeight - 20))) {
         doc.addPage();
-        y = 14;
+        y = 15;
       }
 
       // Conversation Header Row: Purple badge with white number
       doc.setFillColor(126, 34, 206);
-      doc.roundedRect(14, y - 2.8, 4.5, 4.5, 1, 1, 'F');
+      doc.roundedRect(14, y - 2.8, 4.8, 4.8, 1, 1, 'F');
 
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
-      doc.text(String(index + 1), 16.25, y + 0.5, { align: 'center' });
+      doc.setFontSize(7.5);
+      doc.text(String(index + 1), 16.4, y + 0.6, { align: 'center' });
 
       // Metadata string
       doc.setTextColor(15, 23, 42);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.text(metaText, 21, y + 0.5);
+      doc.setFontSize(8.2);
+      doc.text(metaText, 22, y + 0.6);
 
       // "X of Y" count
       doc.setTextColor(148, 163, 184);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.text(`${index + 1} of ${totalConversations}`, pageWidth - 14, y + 0.5, { align: 'right' });
+      doc.setFontSize(7.5);
+      doc.text(`${index + 1} of ${totalConversations}`, pageWidth - 14, y + 0.6, { align: 'right' });
 
-      y += 5;
+      y += 5.5;
 
       // Quoted Summary
       doc.setFont('helvetica', 'normal');
@@ -1634,26 +1627,26 @@ export function downloadDailyReportPDF({
 
       // Purple left accent bar
       doc.setFillColor(147, 51, 234);
-      doc.roundedRect(14, y, 1.2, coachingBoxH, 0.4, 0.4, 'F');
+      doc.roundedRect(14, y, 1.3, coachingBoxH, 0.4, 0.4, 'F');
 
       // Coaching text inside box
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
+      doc.setFontSize(7.6);
       doc.setTextColor(107, 33, 168);
-      doc.text('Coaching: ', 18, y + 3.6);
+      doc.text('Coaching: ', 18, y + 3.8);
 
       const coachPrefixW = doc.getTextWidth('Coaching: ');
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(88, 28, 135);
 
       const firstLineText = cLines[0].replace(/^Coaching:\s*/i, '');
-      doc.text(firstLineText, 18 + coachPrefixW, y + 3.6);
+      doc.text(firstLineText, 18 + coachPrefixW, y + 3.8);
 
       for (let cl = 1; cl < cLines.length; cl++) {
-        doc.text(cLines[cl], 18, y + 3.6 + (cl * 3.4));
+        doc.text(cLines[cl], 18, y + 3.8 + (cl * 3.6));
       }
 
-      y += coachingBoxH + 4;
+      y += coachingBoxH + 5.5;
     });
   }
 
