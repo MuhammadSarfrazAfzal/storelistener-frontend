@@ -299,8 +299,21 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
         throw new Error(data.error);
       }
 
-      const report = data.report || data;
-      setReportData(report);
+      // Merge data and saved report object cleanly so all synchronized metrics, dateLabel, lastRefreshedAt, and report properties are authoritative
+      const rawReport = data.report || {};
+      const synchronizedReport = {
+        ...(typeof rawReport === 'object' ? rawReport : {}),
+        ...data,
+        report: rawReport,
+        dateLabel: data.dateLabel || rawReport.date || targetDate,
+        date: rawReport.date || data.date || targetDate,
+        metrics: data.metrics || rawReport.metrics || {},
+        conversations: data.conversations || rawReport.conversations || [],
+        aiSummary: data.aiSummary || rawReport.aiSummary || {},
+        lastRefreshedAt: data.lastRefreshedAt || rawReport.lastRefreshedAt || new Date().toISOString(),
+      };
+
+      setReportData(synchronizedReport);
       setIsStale(false);
       setFreshnessNote('Report is fully synchronized with store records.');
       setNoSavedReportFound(false);
@@ -373,37 +386,51 @@ export default function DailyReportsPage({ currentUser, token, socket, onNavigat
   const handleExportPdf = async () => {
     if (!reportData) return;
     try {
-      downloadDailyReportPDF({
-        reportData,
-        currentUser,
-        selectedStoreId: selectedStore,
+      // 1. Fetch fresh PDF stream from backend endpoint to guarantee MongoDB persistence synchronization
+      const authToken = token || localStorage.getItem('storelistener_token') || localStorage.getItem('token');
+      const storeScope = selectedStore || currentUser?.storeCode || reportData?.activeFilters?.store || 'all';
+      const versionTimestamp = reportData.lastRefreshedAt ? new Date(reportData.lastRefreshedAt).getTime() : Date.now();
+      const params = new URLSearchParams({
+        date: selectedDate,
+        filterType: 'single',
+        store: storeScope,
+        _t: String(versionTimestamp), // Cache buster
       });
+
+      const res = await fetch(`${BACKEND_URL}/api/reports/daily/pdf?${params.toString()}`, {
+        credentials: 'include',
+        headers: {
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          'Cache-Control': 'no-cache, no-store',
+        },
+        cache: 'no-store',
+      });
+
+      if (res.ok) {
+        const blob = await res.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        const safeSlug = String(reportData.dateLabel || reportData.date || selectedDate).replace(/[^a-zA-Z0-9_-]/g, '_');
+        a.download = `Storelistener_Daily_Report_${safeSlug}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+        return;
+      }
+      throw new Error(`Server returned HTTP ${res.status}`);
     } catch (err) {
-      console.warn('[DailyReportsPage] Client-side PDF generation note, falling back to server export:', err);
+      console.warn('[DailyReportsPage] Server PDF download note, falling back to synchronized client-side generator:', err);
       try {
-        const authToken = token || localStorage.getItem('storelistener_token') || localStorage.getItem('token');
-        const storeScope = selectedStore || currentUser?.storeCode || reportData?.activeFilters?.store || 'all';
-        const params = new URLSearchParams({
-          date: selectedDate,
-          filterType: 'single',
-          store: storeScope,
+        downloadDailyReportPDF({
+          reportData,
+          currentUser,
+          selectedStoreId: selectedStore,
         });
-        const res = await fetch(`${BACKEND_URL}/api/reports/daily/pdf?${params.toString()}`, {
-          credentials: 'include',
-          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-        });
-        if (res.ok) {
-          const blob = await res.blob();
-          const downloadUrl = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = downloadUrl;
-          a.download = `Storelistener_Daily_Report_${selectedDate}.pdf`;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-        }
-      } catch (srvErr) {
-        console.error('[DailyReportsPage] PDF download error:', srvErr);
+      } catch (clientErr) {
+        console.error('[DailyReportsPage] Client-side PDF fallback error:', clientErr);
+        setErrorMessage('Failed to generate PDF. Please ensure server connectivity and retry.');
       }
     }
   };

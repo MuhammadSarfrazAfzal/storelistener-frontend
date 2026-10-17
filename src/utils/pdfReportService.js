@@ -1499,11 +1499,30 @@ export function downloadDailyReportPDF({
   doc.setFillColor(147, 51, 234);
   doc.roundedRect(14, meterY + 6.2, fillW, 2.6, 1.3, 1.3, 'F');
 
-  // 8. ACTIONS FOR TOMORROW Section (Directly following CUSTOMER SENTIMENT without page break)
-  y = meterY + 14;
+  // 8. ACTIONS FOR TOMORROW Section (Flows naturally on Page 1 after CUSTOMER SENTIMENT)
+  const actionItemHeights = actionsForTomorrow.map((action) => {
+    const lines = doc.splitTextToSize(action, pageWidth - 36);
+    return Math.max(5.8, lines.length * 3.8 + 2.2);
+  });
+
+  const requiredForFirstItem = 14 + (actionItemHeights[0] || 6);
+  if (meterY + requiredForFirstItem > pageHeight - 20) {
+    doc.addPage();
+    y = 14;
+  } else {
+    y = meterY + 14;
+  }
+
   y = drawPillBadge(14, y, [13, 148, 136], 'ACTIONS FOR TOMORROW');
 
   actionsForTomorrow.forEach((action, idx) => {
+    const itemH = actionItemHeights[idx];
+    // If individual item would overflow printable page limit, cleanly move to next page
+    if (y + itemH > pageHeight - 20) {
+      doc.addPage();
+      y = 14;
+    }
+
     // Green square with white number
     doc.setFillColor(22, 163, 74);
     doc.roundedRect(14, y - 2.8, 4.8, 4.8, 1, 1, 'F');
@@ -1518,7 +1537,7 @@ export function downloadDailyReportPDF({
     doc.setFontSize(8.2);
     const actionLines = doc.splitTextToSize(action, pageWidth - 36);
     doc.text(actionLines, 22, y + 0.6);
-    y += Math.max(5.8, actionLines.length * 3.8 + 2.2);
+    y += itemH;
   });
 
   // ==========================================
